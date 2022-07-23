@@ -17,6 +17,20 @@ fun Solver.allModels(limit: Int = 10): Set<Model> = buildSet {
     }
 }
 
+fun Solver.walk(action: (Expr) -> Boolean) {
+    assertions.forEach { it.walk(action) }
+}
+
+fun Solver.deepestBoolExprs(action: (BoolExpr) -> Unit) {
+    walk { expr ->
+        if (expr.isApp) {
+            if (expr.numArgs > 0) true else {
+                (expr as? BoolExpr)?.also { action(it) }
+                false
+            }
+        } else false
+    }
+}
 
 fun Expr.walk(action: (Expr) -> Boolean) {
     if (!action(this))
@@ -30,6 +44,7 @@ fun Expr.walk(action: (Expr) -> Boolean) {
 
         isQuantifier -> {
             println("quantifier: $this")
+            (this as Quantifier).body.walk(action)
         }
 
         isVar -> {
@@ -44,3 +59,4 @@ val Model.constDeclsAsExpressions: List<Expr>
             add(context.mkConst(decl) eq getConstInterp(decl))
         }
     }
+
