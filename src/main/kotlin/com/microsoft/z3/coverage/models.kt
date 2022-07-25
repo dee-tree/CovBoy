@@ -5,7 +5,7 @@ fun Solver.allModels(limit: Int = 10): Set<Model> = buildSet {
 
     var i = 0
     whileSat { model ->
-        if (i > limit) return@whileSat context.mkFalse()
+        if (i > limit) return@whileSat
         add(model)
         val modelExprs = model.constDecls.map { decl ->
             (context.mkConst(decl) eq model.getConstInterp(decl))
@@ -13,7 +13,7 @@ fun Solver.allModels(limit: Int = 10): Set<Model> = buildSet {
 
         i++
 
-        !context.and(*modelExprs.toTypedArray())
+        add(!context.and(*modelExprs.toTypedArray()))
     }
 }
 
@@ -21,16 +21,21 @@ fun Solver.walk(action: (Expr) -> Boolean) {
     assertions.forEach { it.walk(action) }
 }
 
-fun Solver.deepestBoolExprs(action: (BoolExpr) -> Unit) {
+fun <T> Solver.deepestBoolExprs(action: (BoolExpr) -> T): List<T> = buildList {
     walk { expr ->
         if (expr.isApp) {
-            if (expr.numArgs > 0) true else {
-                (expr as? BoolExpr)?.also { action(it) }
+            if (expr.numArgs > 0 && expr.args.any { it.isBool }) true else {
+                (expr as? BoolExpr)?.also { this@buildList.add(action(it)) }
                 false
             }
-        } else false
+        } else {
+            if (expr.isQuantifier) add(action(expr as Quantifier))
+            false
+        }
     }
 }
+
+fun Solver.deepestBoolExprs(): Set<BoolExpr> = deepestBoolExprs { it }.toSet()
 
 fun Expr.walk(action: (Expr) -> Boolean) {
     if (!action(this))
@@ -43,7 +48,6 @@ fun Expr.walk(action: (Expr) -> Boolean) {
         }
 
         isQuantifier -> {
-            println("quantifier: $this")
             (this as Quantifier).body.walk(action)
         }
 

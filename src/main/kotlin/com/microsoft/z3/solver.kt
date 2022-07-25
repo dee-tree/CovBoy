@@ -8,9 +8,9 @@ fun Optimize.check(): Status = Check()
 fun Optimize.push() = Push()
 fun Optimize.pop() = Pop()
 
-fun Solver.whileSat(action: (Model) -> BoolExpr) {
+fun Solver.whileSat(action: (Model) -> Unit) {
     while (check() == Status.SATISFIABLE) {
-        add(action(model))
+        action(model)
     }
 }
 
