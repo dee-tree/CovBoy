@@ -18,14 +18,14 @@ class AssertionsStorage(
     val assumptions: List<BoolExpr>
         get() = storage.mapNotNull { if (it.enabled) it.assumption else null }
 
-    fun assertSafely(expr: BoolExpr): Assertion {
-        val assertion = Assertion(expr, context)
+    fun assertSafely(expr: BoolExpr, isLocal: Boolean): Assertion {
+        val assertion = Assertion(expr, context, isLocal)
         storage.find { it.uid == assertion.uid }?.let { return it }
         return assertion.put(solver).also { storage.add(it) }
     }
 
-    fun assert(expr: BoolExpr): Assertion {
-        return assertSafely(expr)
+    fun assert(expr: BoolExpr, isLocal: Boolean): Assertion {
+        return assertSafely(expr, isLocal)
     }
 
     fun forEach(action: (Assertion) -> Unit) {

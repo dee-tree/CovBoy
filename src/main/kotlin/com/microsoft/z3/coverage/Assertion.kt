@@ -5,7 +5,11 @@ import com.microsoft.z3.Context
 import com.microsoft.z3.Solver
 import com.microsoft.z3.implies
 
-class Assertion(val expr: BoolExpr, context: Context) {
+class Assertion(
+    val expr: BoolExpr,
+    context: Context,
+    val isLocal: Boolean
+) {
     val uid = "uid:${expr.hashCode()}"
     val uidExpr: BoolExpr = context.mkBoolConst(uid)
 
