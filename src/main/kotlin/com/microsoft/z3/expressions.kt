@@ -2,7 +2,7 @@ package com.microsoft.z3
 
 fun Context.boolConst(name: String): BoolExpr = mkBoolConst(name)
 
-fun Context.and(vararg boolExprs: BoolExpr): BoolExpr = mkAnd(*boolExprs)
+fun Context.and(vararg boolExprs: BoolExpr): BoolExpr = if (boolExprs.size == 1) boolExprs.first() else mkAnd(*boolExprs)
 infix fun BoolExpr.and(boolExpr: BoolExpr): BoolExpr = context.and(this, boolExpr)
 fun BoolExpr.and(vararg boolExprs: BoolExpr): BoolExpr = context.and(this, *boolExprs)
 
@@ -24,7 +24,7 @@ infix fun BoolExpr.xor(boolExpr: BoolExpr): BoolExpr = context.xor(this, boolExp
 fun Context.implies(a: BoolExpr, b: BoolExpr): BoolExpr = mkImplies(a, b)
 infix fun BoolExpr.implies(boolExpr: BoolExpr): BoolExpr = context.implies(this, boolExpr)
 
-fun Context.not(a: BoolExpr): BoolExpr = mkNot(a)
+fun Context.not(a: BoolExpr): BoolExpr = if (a.isNot) a.args.first() as BoolExpr else mkNot(a)
 operator fun BoolExpr.not(): BoolExpr = context.not(this)
 
 fun Context.eq(a: Expr, vararg others: Expr): BoolExpr = and(*others.map { it eq a }.toTypedArray())
