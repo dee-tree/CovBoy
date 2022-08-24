@@ -13,7 +13,7 @@ abstract class CoverageSampler(
 ) {
     protected val customAssertionsStorage: AssertionsStorage = AssertionsStorage(solver, context)
 
-    protected val coverage = CoverageEvaluator(solver)
+    protected val coverage = CoverageEvaluator(solver, context)
 
     private var coverageResult: CoverageResult = CoverageResult(emptyMap(), 0, 0, 0)
 

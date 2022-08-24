@@ -1,6 +1,7 @@
 package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
+import com.sokolov.z3cov.logger
 
 internal class ModelsEnumerator(
     private val solver: Solver,
@@ -12,14 +13,21 @@ internal class ModelsEnumerator(
 
     private val atoms = solver.atoms
 
+    private var traversedModelsCount = 0
+
     fun hasNext(): Boolean = check() == Status.SATISFIABLE
 
     fun nextModel(): Pair<Model, Assertion> {
         current = solver.model
+        // here we need complete model to exclude most local model in next iterations
         val currentConstraints = atoms.map { it to current.eval(it, true) }.connectWithAnd(context)
 //        println("Model found: $currentConstraints")
 
-        return current to assertionsStorage.assert(!currentConstraints, true).also { if (!it.enabled) it.enabled = true }
+        val result = current to assertionsStorage.assert(!currentConstraints, true).also { if (!it.enabled) it.enabled = true }
+        traversedModelsCount++
+
+        logger().debug("Traversed $traversedModelsCount models")
+        return result
     }
 
     fun take(count: Int): List<Model> = buildList {

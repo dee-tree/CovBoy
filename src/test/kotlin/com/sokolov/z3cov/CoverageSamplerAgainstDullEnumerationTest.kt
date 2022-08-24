@@ -16,7 +16,7 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
     @ParameterizedTest
     @MethodSource("provideSmtInputPaths")
     fun compareWithDullEnumeration(inputPath: String) {
-        logger().info("input: $inputPath")
+        logger().info("input file: $inputPath")
 
         val coverage: CoverageResult
         val dullEnumCoverage: CoverageResult

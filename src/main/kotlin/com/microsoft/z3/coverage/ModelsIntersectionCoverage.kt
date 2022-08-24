@@ -6,6 +6,11 @@ import com.sokolov.z3cov.logger
 class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, context: Context) :
     CoverageSampler(solver, context) {
 
+    init {
+        val partialModelsParam = context.mkParams().apply { add("model.partial", true) }
+        solver.setParameters(partialModelsParam)
+    }
+
     private val modelsEnumerator = ModelsEnumerator(
         solver = solver,
         context = context,
@@ -21,12 +26,15 @@ class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, 
         do {
             val currentBoundModels = modelsEnumerator.take(intersectionSize)
             models.addAll(currentBoundModels)
+
+            currentBoundModels.forEach { coverage.cover(it) }
+
             if (currentBoundModels.count() < intersectionSize) break
             val intersection = currentBoundModels
                 .fold(
-                    atoms.map { it to currentBoundModels.first().eval(it, true) }.toSet()
+                    atoms.map { it to currentBoundModels.first().eval(it, false) }.toSet()
                 ) { acc, currentModel ->
-                    acc.intersect(atoms.map { it to currentModel.eval(it, true) }.toSet())
+                    acc.intersect(atoms.map { it to currentModel.eval(it, false) }.toSet())
                 }
 
 //            logger().info("intersection found: ${intersection}")
@@ -37,44 +45,45 @@ class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, 
             }
             logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
 
-
-            // try to negate intersection constraint
-            val rememberEnabledAssertions = buildMap {
-                customAssertionsStorage.forEach {
-                    put(it, it.enabled)
-                    it.enabled = false
-                }
-            }
             val intersectionConstraint = intersection.connectWithAnd(context)
-            logger().debug("Add constraint on negated intersection: ${!intersectionConstraint}")
-            val assertion = customAssertionsStorage.assert(!intersectionConstraint, false)
+            val negatedIntersection = !intersectionConstraint
+            logger().trace("Add constraint on negated intersection: $negatedIntersection")
+            val negIntersectionAssertion = customAssertionsStorage.assert(negatedIntersection, false)
 
-//            if (checkWithAssumptions() == Status.UNSATISFIABLE) {
-//                logger().info("UNSAT on asserting negated intersection")
-//                assertion.enabled = false
-//
-//                customAssertionsStorage.assert(intersectionConstraint, false)
-//                logger().info("Assert intersection to avoid get unsat on future assert the negated intersection")
-//            }
-            rememberEnabledAssertions.forEach { (rememberedAssertion, enabled) ->
-                rememberedAssertion.enabled = enabled
-            }
-            // ---
 
             // check assertions conflict
-            while (checkWithAssumptions() == Status.UNSATISFIABLE) {
+            if (checkWithAssumptions() == Status.UNSATISFIABLE) {
                 logger().info("Assertions conflict found")
                 val unsatCore = solver.unsatCore
-                logger().debug("UnsatCore: ${unsatCore.contentToString()}")
-                val uids = unsatCore.filter { expr -> expr in customAssertionsStorage.assertions.map { it.uidExpr } }
+                logger().trace("UnsatCore: ${unsatCore.contentToString()}")
 
-                val assertionToBeDisabled = customAssertionsStorage.assertions
-                    .firstOrNull { it.isLocal && it.uidExpr in uids } ?: break
-                assertionToBeDisabled.enabled = false
-                logger().debug("Disabled assertion: $assertionToBeDisabled")
+                val customAssertionsFromCore = customAssertionsStorage.assertions.filter { it.uidExpr in unsatCore }
+
+                logger().trace("custom assertions in unsat core: $customAssertionsFromCore")
+
+                val customUids = customAssertionsFromCore.map { it.uidExpr }
+                val customConditions = customAssertionsFromCore.map { it.assumption }
+
+                // if only custom assertions conflict
+                if (customUids.size != 1 && unsatCore.all { it in customUids || it in customConditions }) {
+                    logger().info("Assertions conflict: custom assertions")
+                    (customAssertionsFromCore - negIntersectionAssertion).filter { !it.isLocal }.forEach(Assertion::disable)
+                } else {
+                    // conflict with original assertions branch
+                    logger().info("Assertions conflict: negated intersection with original formula")
+                    logger().info("Disable negated intersection assertion")
+                    negIntersectionAssertion.disable()
+                    logger().trace("Negated intersection assertion disabled successfully: $negIntersectionAssertion")
+
+                    if (customUids.size == 1) {
+                        logger().info("Cover impossible value of atom!")
+                        logger().trace("Cover impossible value of atom $intersectionConstraint is False")
+                        coverage.coverAtom(intersectionConstraint, context.mkFalse())
+                    }
+                }
             }
 
-        } while (true)
+        } while (!coverage.isCovered)
 
         return models
     }

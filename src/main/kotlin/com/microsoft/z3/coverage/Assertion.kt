@@ -23,5 +23,13 @@ class Assertion(
 
     fun put(solver: Solver): Assertion = apply { solver.assertAndTrack(assumption implies expr, uidExpr) }
 
+    fun disable() {
+        enabled = false
+    }
+
+    fun enable() {
+        enabled = true
+    }
+
     override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expr = $expr)"
 }

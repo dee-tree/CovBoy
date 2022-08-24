@@ -16,14 +16,14 @@ abstract class CoverageSamplerTest {
     @ParameterizedTest()
     @MethodSource("provideSmtInputPaths")
     fun test(inputPath: String) {
-        logger().info("input: $inputPath")
+        logger().info("input file: $inputPath")
 
         withContext {
             val solver = solver()
             solver.fromFile(inputPath)
 
             val coverage = testCoverageSampler(solver, this).getCoverage()
-            println("coverage value: ${coverage.coverageNumber}")
+            println("coverage value for $inputPath: ${coverage.coverageNumber}")
         }
 
     }
