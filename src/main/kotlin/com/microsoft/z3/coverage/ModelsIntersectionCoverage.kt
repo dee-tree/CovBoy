@@ -1,8 +1,10 @@
 package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
+import com.sokolov.z3cov.logger
 
-class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, context: Context) : CoverageSampler(solver, context) {
+class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, context: Context) :
+    CoverageSampler(solver, context) {
 
     private val modelsEnumerator = ModelsEnumerator(
         solver = solver,
@@ -27,9 +29,14 @@ class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, 
                     acc.intersect(atoms.map { it to currentModel.eval(it, true) }.toSet())
                 }
 
-            println("intersection: ${intersection}")
+//            logger().info("intersection found: ${intersection}")
 
-            if (intersection.isEmpty()) continue
+            if (intersection.isEmpty()) {
+                logger().info("Found intersection, but it is empty")
+                continue
+            }
+            logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
+
 
             // try to negate intersection constraint
             val rememberEnabledAssertions = buildMap {
@@ -39,15 +46,16 @@ class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, 
                 }
             }
             val intersectionConstraint = intersection.connectWithAnd(context)
-            println("Assert !intersection: ${!intersectionConstraint}")
+            logger().debug("Add constraint on negated intersection: ${!intersectionConstraint}")
             val assertion = customAssertionsStorage.assert(!intersectionConstraint, false)
 
-            if (checkWithAssumptions() == Status.UNSATISFIABLE) {
-                println("Essential constraint for satisfiability: ${intersectionConstraint}")
-                assertion.enabled = false
-
-                customAssertionsStorage.assert(intersectionConstraint, false)
-            }
+//            if (checkWithAssumptions() == Status.UNSATISFIABLE) {
+//                logger().info("UNSAT on asserting negated intersection")
+//                assertion.enabled = false
+//
+//                customAssertionsStorage.assert(intersectionConstraint, false)
+//                logger().info("Assert intersection to avoid get unsat on future assert the negated intersection")
+//            }
             rememberEnabledAssertions.forEach { (rememberedAssertion, enabled) ->
                 rememberedAssertion.enabled = enabled
             }
@@ -55,15 +63,15 @@ class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, 
 
             // check assertions conflict
             while (checkWithAssumptions() == Status.UNSATISFIABLE) {
-                println("Assertions conflict found")
+                logger().info("Assertions conflict found")
                 val unsatCore = solver.unsatCore
-                println("Unsat core: ${unsatCore.contentToString()}")
-                val uids =
-                    unsatCore.filter { ucExpr -> ucExpr in customAssertionsStorage.assertions.map { it.uidExpr } }
+                logger().debug("UnsatCore: ${unsatCore.contentToString()}")
+                val uids = unsatCore.filter { expr -> expr in customAssertionsStorage.assertions.map { it.uidExpr } }
 
-                val assertionToBeDisabled = customAssertionsStorage.assertions.firstOrNull { it.isLocal && it.uidExpr in uids } ?: break
+                val assertionToBeDisabled = customAssertionsStorage.assertions
+                    .firstOrNull { it.isLocal && it.uidExpr in uids } ?: break
                 assertionToBeDisabled.enabled = false
-                println("Disabled assertion: $assertionToBeDisabled")
+                logger().debug("Disabled assertion: $assertionToBeDisabled")
             }
 
         } while (true)

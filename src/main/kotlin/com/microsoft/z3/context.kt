@@ -1,5 +1,12 @@
 package com.microsoft.z3
 
-inline fun <T> withContext(configuration: Map<String, String> = emptyMap(), action: Context.() -> T) = Context(configuration).apply {
-    action(this)
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
+
+@OptIn(ExperimentalContracts::class)
+inline fun <T> withContext(configuration: Map<String, String> = emptyMap(), action: Context.() -> T) {
+    contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
+    val context = Context(configuration)
+    action(context)
 }

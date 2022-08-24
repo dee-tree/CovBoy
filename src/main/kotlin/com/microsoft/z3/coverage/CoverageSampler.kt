@@ -15,17 +15,10 @@ abstract class CoverageSampler(
 
     protected val coverage = CoverageEvaluator(solver)
 
-    var solverCheckCalls: Int = 0
-        private set
-
-    var coveringModelsComputationMillis: Long = 0
-        private set
-
-    var coverageComputationMillis: Long = 0
-        private set
+    private var coverageResult: CoverageResult = CoverageResult(emptyMap(), 0, 0, 0)
 
     fun checkWithAssumptions(): Status {
-        solverCheckCalls++
+        coverageResult = coverageResult.copy(solverCheckCalls = coverageResult.solverCheckCalls + 1)
         return solver.check(*customAssertionsStorage.assumptions.toTypedArray())
     }
 
@@ -33,28 +26,24 @@ abstract class CoverageSampler(
 
     private fun computeCoverageWithTimeMeasure(): Collection<Model> {
         val models: Collection<Model>
-        coveringModelsComputationMillis = measureTimeMillis { models = computeCoveringModels() }
+        val coveringModelsComputationMillis = measureTimeMillis { models = computeCoveringModels() }
+
+        coverageResult = coverageResult.copy(coveringModelsComputationMillis = coveringModelsComputationMillis)
         return models
     }
 
-    fun getCoverage(): Map<BoolExpr, Double> {
-        val coverage: Map<BoolExpr, Double>
+    fun getCoverage(): CoverageResult {
+        if (!coverageResult.isEmpty()) return coverageResult
 
-        coverageComputationMillis = measureTimeMillis {
-            coverage = this.coverage.eval(computeCoverageWithTimeMeasure())
+        val atomsCoverage: Map<BoolExpr, Double>
+        val coverageComputationMillis = measureTimeMillis {
+            atomsCoverage = this.coverage.eval(computeCoverageWithTimeMeasure())
         }
-        return coverage
-    }
 
-    fun printCoverage() {
-        val coverage = getCoverage()
-
-        println("\n")
-        println("${"-".repeat(5)} Coverage statistics ${"-".repeat(5)}")
-        println("\t * Coverage computation measured (without final models handling): $coveringModelsComputationMillis ms")
-        println("\t * Coverage computation measured (totally): $coverageComputationMillis ms")
-        println("\t * \"solver-check\" calls: $solverCheckCalls")
-        println()
-        println(coverage)
+        coverageResult = coverageResult.copy(
+            atomsCoverage = atomsCoverage,
+            coverageComputationMillis = coverageComputationMillis
+        )
+        return coverageResult
     }
 }

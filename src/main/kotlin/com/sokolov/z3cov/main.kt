@@ -10,15 +10,12 @@ fun main() {
     withContext {
         with(solver()) {
 //            fromFile("input/abs.smt2")
-//            fromFile("input/boolean_simple.smt2")
-            fromFile("input/3190.smt2")
-
+            fromFile("input/boolean_simple.smt2")
+//            fromFile("input/3190.smt2")
+//            fromFile("input/bench.smt2")
 
             println(check())
-
-            ModelsEnumerationCoverage(this, this@withContext).printCoverage()
 //            ModelsIntersectionCoverage(3, this, this@withContext).printCoverage()
-
         }
     }
 
