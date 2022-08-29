@@ -3,13 +3,13 @@ package com.microsoft.z3.coverage
 import com.microsoft.z3.*
 import com.sokolov.z3cov.logger
 
-class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, context: Context) :
-    CoverageSampler(solver, context) {
+class ModelsIntersectionCoverage(
+    solver: Solver,
+    context: Context,
+    val intersectionSize: Int = 3,
+    private val immutableCoverageIterationsLimit: Int = 1
+) : CoverageSampler(solver, context) {
 
-    init {
-        val partialModelsParam = context.mkParams().apply { add("model.partial", true) }
-        solver.setParameters(partialModelsParam)
-    }
 
     private val modelsEnumerator = ModelsEnumerator(
         solver = solver,
@@ -20,71 +20,130 @@ class ModelsIntersectionCoverage(val intersectionSize: Int = 3, solver: Solver, 
 
     private val atoms = solver.atoms
 
-    override fun computeCoveringModels(): Collection<Model> {
-        val models = mutableSetOf<Model>()
+    private var nonChangedCoverageIterations = 0
+
+    override fun computeCoverage(
+        coverModel: (Model) -> Set<AtomCoverageBase>,
+        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase
+    ) {
+        if (checkWithAssumptions() != Status.SATISFIABLE) {
+            logger().warn("Formula is UNSAT initially")
+            return
+        }
 
         do {
-            val currentBoundModels = modelsEnumerator.take(intersectionSize)
-            models.addAll(currentBoundModels)
+            if (nonChangedCoverageIterations > 0)
+                logger().trace("Non-changed coverage iterations: $nonChangedCoverageIterations")
+            var coverageChanged = false
 
-            currentBoundModels.forEach { coverage.cover(it) }
+            val assertion: Assertion
 
-            if (currentBoundModels.count() < intersectionSize) break
-            val intersection = currentBoundModels
-                .fold(
-                    atoms.map { it to currentBoundModels.first().eval(it, false) }.toSet()
-                ) { acc, currentModel ->
-                    acc.intersect(atoms.map { it to currentModel.eval(it, false) }.toSet())
+            // if coverage not changed, let's try to add new assert
+            if (nonChangedCoverageIterations > immutableCoverageIterationsLimit) {
+                logger().debug("Jump to another atoms in the formula due to $immutableCoverageIterationsLimit times coverage immutability")
+                val uncoveredAtom = firstSemiCoveredAtom
+
+                logger().debug("first semi-uncovered atom: $uncoveredAtom")
+
+                if (uncoveredAtom == null) {
+                    nonChangedCoverageIterations = 0
+                    continue
                 }
 
-//            logger().info("intersection found: ${intersection}")
+                val uncoveredAtomAsExpr =
+                    if (uncoveredAtom.second == context.mkTrue()) uncoveredAtom.first else !uncoveredAtom.first
+                assertion = customAssertionsStorage.assert(uncoveredAtomAsExpr, false)
 
-            if (intersection.isEmpty()) {
-                logger().info("Found intersection, but it is empty")
-                continue
+                nonChangedCoverageIterations = 0
+            } else {
+                logger().debug("Extract intersections of atoms in $intersectionSize models")
+                val currentBoundModels = modelsEnumerator.take(intersectionSize)
+
+                currentBoundModels.forEach {
+                    val currentModelCoverage = coverModel(it)
+
+                    coverageChanged = coverageChanged || currentModelCoverage.any { atomCoverage -> atomCoverage !is EmptyAtomCoverage }
+                }
+
+                if (currentBoundModels.count() < intersectionSize)
+                    break
+
+                val intersection = currentBoundModels
+                    .fold(
+                        atoms.map { it to currentBoundModels.first().eval(it, false) }.toSet()
+                    ) { acc, currentModel ->
+                        acc.intersect(atoms.map { it to currentModel.eval(it, false) }.toSet())
+                    }.filter { it.second.isCertainBool }
+
+                logger().trace("intersection found: ${intersection}")
+
+
+                if (intersection.isEmpty()) {
+                    logger().info("No intersection found")
+                    continue
+                }
+                logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
+
+                val intersectionConstraint = intersection.connectWithAnd(context)
+
+                val negatedIntersection = !intersectionConstraint
+//                logger().trace("Add constraint on negated intersection: $negatedIntersection")
+                logger().trace("Add constraint on negated intersection")
+                val negIntersectionAssertion = customAssertionsStorage.assert(negatedIntersection, false)
+
+                assertion = negIntersectionAssertion
             }
-            logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
 
-            val intersectionConstraint = intersection.connectWithAnd(context)
-            val negatedIntersection = !intersectionConstraint
-            logger().trace("Add constraint on negated intersection: $negatedIntersection")
-            val negIntersectionAssertion = customAssertionsStorage.assert(negatedIntersection, false)
-
-
+            val checkStatus = checkWithAssumptions()
             // check assertions conflict
-            if (checkWithAssumptions() == Status.UNSATISFIABLE) {
-                logger().info("Assertions conflict found")
-                val unsatCore = solver.unsatCore
-                logger().trace("UnsatCore: ${unsatCore.contentToString()}")
-
-                val customAssertionsFromCore = customAssertionsStorage.assertions.filter { it.uidExpr in unsatCore }
-
-                logger().trace("custom assertions in unsat core: $customAssertionsFromCore")
-
-                val customUids = customAssertionsFromCore.map { it.uidExpr }
-                val customConditions = customAssertionsFromCore.map { it.assumption }
-
-                // if only custom assertions conflict
-                if (customUids.size != 1 && unsatCore.all { it in customUids || it in customConditions }) {
-                    logger().info("Assertions conflict: custom assertions")
-                    (customAssertionsFromCore - negIntersectionAssertion).filter { !it.isLocal }.forEach(Assertion::disable)
-                } else {
-                    // conflict with original assertions branch
-                    logger().info("Assertions conflict: negated intersection with original formula")
-                    logger().info("Disable negated intersection assertion")
-                    negIntersectionAssertion.disable()
-                    logger().trace("Negated intersection assertion disabled successfully: $negIntersectionAssertion")
-
-                    if (customUids.size == 1) {
-                        logger().info("Cover impossible value of atom!")
-                        logger().trace("Cover impossible value of atom $intersectionConstraint is False")
-                        coverage.coverAtom(intersectionConstraint, context.mkFalse())
-                    }
-                }
+            if (checkStatus == Status.UNSATISFIABLE) {
+                val coverageChangedAfterResolution = resolveConflict(assertion, coverAtom)
+                logger().info("Coverage ${if (coverageChangedAfterResolution) "did" else "didn't"} change after conflict resolution")
+                coverageChanged = coverageChanged || coverageChangedAfterResolution
             }
 
-        } while (!coverage.isCovered)
+            if (coverageChanged) nonChangedCoverageIterations = 0 else nonChangedCoverageIterations++
+        } while (!isCovered)
 
-        return models
+        logger().info("Traversed ${modelsEnumerator.traversedModelsCount} models")
+    }
+
+    /**
+     * @return true if coverage changed
+     */
+    private fun resolveConflict(
+        assertion: Assertion,
+        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase
+    ): Boolean {
+        logger().trace("Resolve conflict with $assertion")
+        val unsatCore = solver.unsatCore
+        logger().trace("UnsatCore: ${unsatCore.contentToString()}")
+
+        val customAssertionsFromCore = customAssertionsStorage.assertions.filter { it.uidExpr in unsatCore }
+
+//        logger().trace("custom assertions in unsat core: $customAssertionsFromCore")
+
+        val customUids = customAssertionsFromCore.map { it.uidExpr }
+        val customConditions = customAssertionsFromCore.map { it.assumption }
+
+        // if only custom assertions conflict
+        if (customUids.size != 1 && unsatCore.all { it in customUids || it in customConditions }) {
+            logger().info("Assertions conflict: custom assertions")
+            (customAssertionsFromCore - assertion).filter { !it.isLocal }.forEach(Assertion::disable)
+        } else {
+            // conflict with original assertions branch
+            logger().info("Assertions conflict: with original formula. Disable the assertion")
+            assertion.disable()
+            logger().trace("The assertion disabled successfully: $assertion")
+
+            if (customUids.size == 1) {
+                logger().info("Cover impossible value of atom!")
+                logger().trace("Cover impossible value of atom $assertion")
+
+                val (atom, value) = if (assertion.expr.isNot) !assertion.expr to context.mkFalse() else assertion.expr to context.mkTrue()
+                return coverAtom(atom, value) !is EmptyAtomCoverage
+            }
+        }
+        return false
     }
 }

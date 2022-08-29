@@ -22,24 +22,21 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
         val dullEnumCoverage: CoverageResult
 
         withContext {
-            val solver1 = solver()
+            val solver1 = solver(true)
             solver1.fromFile(inputPath)
-            coverage = testCoverageSampler(solver1, this).getCoverage()
+            coverage = testCoverageSampler(solver1, this).computeCoverage()
 
-            val solver2 = solver()
+            val solver2 = solver(true)
             solver2.fromFile(inputPath)
-            dullEnumCoverage = dullEnumCoverageSampler(solver2, this).getCoverage()
-        }
+            dullEnumCoverage = dullEnumCoverageSampler(solver2, this).computeCoverage()
 
-        assertTrue { coverage.coverageNumber <= dullEnumCoverage.coverageNumber }
-
-        dullEnumCoverage.atomsCoverage.forEach { (boolExpr, idealCov) ->
-            assertContains(coverage.atomsCoverage.keys, boolExpr)
-            assertTrue { coverage.atomsCoverage[boolExpr]!! <= idealCov }
+            dullEnumCoverage.atomsCoverage.forEach { dullCoverage ->
+                assertContains(coverage.atomsCoverage.map { it.atom }, dullCoverage.atom)
+            }
         }
 
         logger().debug("coverage number: ${coverage.coverageNumber}")
-        logger().debug("ideal coverage number: ${dullEnumCoverage.coverageNumber}")
+        logger().debug("dull enumeration coverage number: ${dullEnumCoverage.coverageNumber}")
         /**
          * < 0 => worse than dull enumeration
          * = 0 => same as dull enumeration
@@ -52,15 +49,9 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
             coverage.solverCheckCalls <= dullEnumCoverage.solverCheckCalls
         }
 
-        val totalCoverageSpentTimeMillis = with(coverage) {
-            coverageComputationMillis + coveringModelsComputationMillis
-        }
-        val totalDullCoverageSpentTimeMillis = with(dullEnumCoverage) {
-            coverageComputationMillis + coveringModelsComputationMillis
-        }
-        logger().debug("total time coverage vs dull enum time coverage: $totalCoverageSpentTimeMillis ms VS $totalDullCoverageSpentTimeMillis ms")
+        logger().debug("total time coverage vs dull enum time coverage: ${coverage.coverageComputationMillis} ms VS ${dullEnumCoverage.coverageComputationMillis} ms")
 
-        assertTrue(message = "total coverage spent time is greater than dullEnumCoverage: $totalCoverageSpentTimeMillis > $totalDullCoverageSpentTimeMillis") {
+        assertTrue(message = "total coverage spent time is greater than dullEnumCoverage: ${coverage.coverageComputationMillis} > ${dullEnumCoverage.coverageComputationMillis}") {
             coverage.solverCheckCalls <= dullEnumCoverage.solverCheckCalls
         }
     }

@@ -7,7 +7,9 @@ import com.microsoft.z3.Solver
 class AssertionsStorage(
     private val solver: Solver,
     private val context: Context,
-    vararg initial: Assertion
+    var onAssertionChanged: ((newState: AssertionState) -> Unit)? = null,
+    vararg initial
+    : Assertion,
 ) {
 
     private val storage = mutableListOf<Assertion>(*initial)
@@ -18,8 +20,8 @@ class AssertionsStorage(
     val assumptions: List<BoolExpr>
         get() = storage.mapNotNull { if (it.enabled) it.assumption else null }
 
-    fun assertSafely(expr: BoolExpr, isLocal: Boolean): Assertion {
-        val assertion = Assertion(expr, context, isLocal)
+    private fun assertSafely(expr: BoolExpr, isLocal: Boolean): Assertion {
+        val assertion = Assertion(expr, context, isLocal) { onAssertionChanged?.invoke(it) }
         storage.find { it.uid == assertion.uid }?.let { return it }
         return assertion.put(solver).also { storage.add(it) }
     }

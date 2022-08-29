@@ -36,7 +36,7 @@ fun <T> Solver.deepestBoolExprs(action: (BoolExpr) -> T): List<T> = buildList {
 }
 
 val Solver.atoms: Set<BoolExpr>
-    get() = deepestBoolExprs { it }.toSet()
+    get() = deepestBoolExprs { it }.filter { !it.isTrue && !it.isFalse }.toSet()
 
 
 fun Expr.walk(action: (Expr) -> Boolean) {

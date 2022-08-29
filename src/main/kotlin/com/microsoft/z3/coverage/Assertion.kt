@@ -8,12 +8,11 @@ import com.microsoft.z3.implies
 class Assertion(
     val expr: BoolExpr,
     context: Context,
-    val isLocal: Boolean
+    val isLocal: Boolean,
+    var onAssertionChanged: ((AssertionState) -> Unit)? = null
 ) {
     val uid = "uid:${expr.hashCode()}"
     val uidExpr: BoolExpr = context.mkBoolConst(uid)
-
-    var enabled = true
 
     val assumptionName = "cond:${expr.hashCode()}"
     val conditionExpr = context.mkBoolConst(assumptionName)
@@ -21,15 +20,28 @@ class Assertion(
     val assumption: BoolExpr
         get() = conditionExpr
 
-    fun put(solver: Solver): Assertion = apply { solver.assertAndTrack(assumption implies expr, uidExpr) }
+    var enabled = true
+        private set
+
+    fun put(solver: Solver): Assertion = apply {
+        solver.assertAndTrack(assumption implies expr, uidExpr)
+        onAssertionChanged?.invoke(AssertionState(uid, enabled))
+    }
 
     fun disable() {
         enabled = false
+        onAssertionChanged?.invoke(AssertionState(uid, enabled))
     }
 
     fun enable() {
         enabled = true
+        onAssertionChanged?.invoke(AssertionState(uid, enabled))
     }
 
     override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expr = $expr)"
 }
+
+data class AssertionState(
+    val uid: String,
+    val enabled: Boolean
+)

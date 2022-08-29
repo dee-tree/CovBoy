@@ -11,39 +11,74 @@ abstract class CoverageSampler(
     protected val solver: Solver,
     protected val context: Context
 ) {
-    protected val customAssertionsStorage: AssertionsStorage = AssertionsStorage(solver, context)
+    protected val customAssertionsStorage: AssertionsStorage = AssertionsStorage(solver, context, ::onAssertionChanged)
 
-    protected val coverage = CoverageEvaluator(solver, context)
+    private val coverage = CoverageEvaluator(solver, context)
 
-    private var coverageResult: CoverageResult = CoverageResult(emptyMap(), 0, 0, 0)
+    private var coverageResult: CoverageResult = CoverageResult(emptySet(), 0, 0)
+
+
+    // checks optimization
+    private var lastCheckStatus: Status? = null
+    var isCheckNeed: Boolean = true
+        private set
 
     fun checkWithAssumptions(): Status {
+        if (!isCheckNeed)
+            return lastCheckStatus!!
+
         coverageResult = coverageResult.copy(solverCheckCalls = coverageResult.solverCheckCalls + 1)
-        return solver.check(*customAssertionsStorage.assumptions.toTypedArray())
+
+        lastCheckStatus = solver.check(*customAssertionsStorage.assumptions.toTypedArray())
+        isCheckNeed = false
+        return lastCheckStatus!!
     }
 
-    abstract fun computeCoveringModels(): Collection<Model>
+    protected abstract fun computeCoverage(
+        coverModel: (Model) -> Set<AtomCoverageBase>,
+        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase
+    )
 
-    private fun computeCoverageWithTimeMeasure(): Collection<Model> {
-        val models: Collection<Model>
-        val coveringModelsComputationMillis = measureTimeMillis { models = computeCoveringModels() }
-
-        coverageResult = coverageResult.copy(coveringModelsComputationMillis = coveringModelsComputationMillis)
-        return models
+    fun computeCoverage(): CoverageResult {
+        computeCoverage(::cover, ::coverAtom)
+        println("Coverage result: $coverageResult")
+        return coverageResult
     }
 
-    fun getCoverage(): CoverageResult {
-        if (!coverageResult.isEmpty()) return coverageResult
+    protected val isCovered: Boolean
+        get() = coverage.isCovered
 
-        val atomsCoverage: Map<BoolExpr, Double>
-        val coverageComputationMillis = measureTimeMillis {
-            atomsCoverage = this.coverage.eval(computeCoverageWithTimeMeasure())
+    protected val firstSemiCoveredAtom: Pair<BoolExpr, BoolExpr>?
+        get() = coverage.firstSemiCoveredAtom()
+
+    private fun cover(model: Model): Set<AtomCoverageBase> {
+        val modelCoverage: Set<AtomCoverageBase>
+
+        val modelCoverageMillis = measureTimeMillis {
+            modelCoverage = coverage.cover(model)
         }
 
         coverageResult = coverageResult.copy(
-            atomsCoverage = atomsCoverage,
-            coverageComputationMillis = coverageComputationMillis
+            atomsCoverage = (coverageResult.atomsCoverage to modelCoverage).merge(),
+            coverageComputationMillis = coverageResult.coverageComputationMillis + modelCoverageMillis
         )
-        return coverageResult
+        return modelCoverage
+    }
+
+    private fun coverAtom(atom: BoolExpr, value: BoolExpr): AtomCoverageBase {
+        val atomCoverage: AtomCoverageBase
+
+        val atomCoverageMillis = measureTimeMillis { atomCoverage = coverage.coverAtom(atom, value) }
+
+        coverageResult = coverageResult.copy(
+            atomsCoverage = (coverageResult.atomsCoverage to setOf(atomCoverage)).merge(),
+            coverageComputationMillis = coverageResult.coverageComputationMillis + atomCoverageMillis
+        )
+
+        return atomCoverage
+    }
+
+    private fun onAssertionChanged(newState: AssertionState) {
+        isCheckNeed = true
     }
 }

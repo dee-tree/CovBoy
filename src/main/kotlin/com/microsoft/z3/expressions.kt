@@ -31,3 +31,6 @@ fun Context.eq(a: Expr, vararg others: Expr): BoolExpr = and(*others.map { it eq
 fun Context.eq(vararg others: Expr): BoolExpr = others.fold(others[0] eq others[0]) { acc, curr -> eq(acc, curr)}
 fun Context.eq(a: Expr, b: Expr): BoolExpr = mkEq(a, b)
 infix fun Expr.eq(expr: Expr): BoolExpr = context.eq(this, expr)
+
+val Expr.isCertainBool: Boolean
+    get() = isTrue || isFalse

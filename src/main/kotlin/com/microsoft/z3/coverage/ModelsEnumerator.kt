@@ -1,7 +1,6 @@
 package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
-import com.sokolov.z3cov.logger
 
 internal class ModelsEnumerator(
     private val solver: Solver,
@@ -13,24 +12,27 @@ internal class ModelsEnumerator(
 
     private val atoms = solver.atoms
 
-    private var traversedModelsCount = 0
+    var traversedModelsCount = 0
+        private set
 
     fun hasNext(): Boolean = check() == Status.SATISFIABLE
 
     fun nextModel(): Pair<Model, Assertion> {
         current = solver.model
-        // here we need complete model to exclude most local model in next iterations
-        val currentConstraints = atoms.map { it to current.eval(it, true) }.connectWithAnd(context)
-//        println("Model found: $currentConstraints")
+        // get incomplete models to avoid "unknown"/"undefined" predicates
+        val currentConstraints = atoms.map { it to current.eval(it, false) }
+            .filter { it.second.isCertainBool }.connectWithAnd(context)
 
-        val result = current to assertionsStorage.assert(!currentConstraints, true).also { if (!it.enabled) it.enabled = true }
+        val result = current to assertionsStorage.assert(!currentConstraints, true)
+            .also { if (!it.enabled) it.enable() }
         traversedModelsCount++
 
-        logger().debug("Traversed $traversedModelsCount models")
         return result
     }
 
     fun take(count: Int): List<Model> = buildList {
+        if (count < 1) return@buildList
+
         repeat(count) {
             if (!hasNext())
                 return@buildList
@@ -42,11 +44,22 @@ internal class ModelsEnumerator(
         while (hasNext())
             add(nextModel().first)
     }
+
+    fun forEach(action: (Model) -> Unit) {
+        while (hasNext())
+            action(nextModel().first)
+    }
 }
 
 internal fun Collection<Pair<BoolExpr, Expr>>.connectWithAnd(context: Context): BoolExpr {
     with(context) {
-        if (size == 1) return first().let { if (it.second == mkTrue()) it.first else !it.first }
+        if (size == 1) return first().let {
+            when (it.second) {
+                mkFalse() -> !it.first
+//                mkTrue() -> it.first
+                else -> it.first
+            }
+        }
 
         return and(
             *(filter { it.second == mkTrue() }.map { it.first }

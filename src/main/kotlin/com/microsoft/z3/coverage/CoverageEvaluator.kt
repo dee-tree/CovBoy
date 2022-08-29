@@ -1,10 +1,11 @@
 package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
+import com.sokolov.z3cov.logger
 
 class CoverageEvaluator(
     solver: Solver,
-    context: Context
+    private val context: Context
 ) {
 
     private val atoms = solver.atoms
@@ -14,41 +15,57 @@ class CoverageEvaluator(
     val isCovered: Boolean
         get() = uncoveredValues.all { it.value.isEmpty() }
 
+    private val True: BoolExpr = context.mkTrue()
+    private val False: BoolExpr = context.mkFalse()
+
     init {
         atoms.forEach { atom ->
-            uncoveredValues[atom] = mutableSetOf(context.mkTrue(), context.mkFalse())
+            uncoveredValues[atom] = mutableSetOf(True, False)
         }
     }
 
-    fun cover(model: Model) {
+    /**
+     * @return covered by this call atoms with their values
+     */
+    fun cover(model: Model): Set<AtomCoverageBase> {
+        val thisModelCoverage = mutableSetOf<AtomCoverageBase>()
+
+        var covered = 0
+        var uncovered = 0
+
         atoms.forEach { atom ->
-            coverAtom(atom, model.eval(atom, false) as BoolExpr)
+            val atomValue = model.eval(atom, false) as BoolExpr
+            val coveredThisAtom = coverAtom(atom, atomValue)
+            if (coveredThisAtom !is EmptyAtomCoverage) covered++ else uncovered++
+
+            thisModelCoverage.add(coveredThisAtom)
+
+//            if (coveredThisAtom !is EmptyAtomCoverage) {
+//                thisModelCoverage.add(coveredThisAtom)
+//            }
+
         }
+
+        logger().debug("Covered: $covered; uncovered: $uncovered")
+        logger().trace("Covered atoms: $thisModelCoverage")
+        return thisModelCoverage
     }
 
-    fun coverAtom(atom: BoolExpr, value: BoolExpr) {
-        uncoveredValues[atom]?.remove(value) ?: return
+    fun firstSemiCoveredAtom(): Pair<BoolExpr, BoolExpr>? = uncoveredValues.entries
+        .firstOrNull { it.value.size == 1 }
+        ?.let { it.key to it.value.first() }
+
+    fun coverAtom(atom: BoolExpr, value: BoolExpr): AtomCoverageBase {
+        if (!value.isCertainBool) return NonEffectingAtomCoverage(atom, context)
+
+        val covered = uncoveredValues[atom]?.remove(value) ?: return EmptyAtomCoverage(atom)
+
+        if (!covered) return EmptyAtomCoverage(atom)
 
         if (uncoveredValues[atom]?.isEmpty() == true) {
             uncoveredValues.remove(atom)
         }
-    }
-
-    fun eval(models: Collection<Model>): Map<BoolExpr, Double> {
-        val coverage = buildMap<BoolExpr, MutableSet<BoolExpr>> {
-            atoms.forEach { atom ->
-                put(atom, mutableSetOf())
-            }
-        }
-
-        models.forEach { model ->
-            atoms.forEach { atom ->
-                coverage[atom]?.add(model.eval(atom, false) as BoolExpr)
-            }
-        }
-        println("coverage values: ${coverage}")
-
-        return coverage.entries.associate { it.key to it.value.size / 2.0 }
+        return AtomCoverage(atom, setOf(value))
     }
 
 }

@@ -13,17 +13,22 @@ import java.util.stream.Stream
 
 abstract class CoverageSamplerTest {
 
-    @ParameterizedTest()
+    @ParameterizedTest
     @MethodSource("provideSmtInputPaths")
-    fun test(inputPath: String) {
+    open fun test(inputPath: String) {
+
         logger().info("input file: $inputPath")
 
         withContext {
-            val solver = solver()
+            val solver = solver(true)
             solver.fromFile(inputPath)
 
-            val coverage = testCoverageSampler(solver, this).getCoverage()
+            val coverage = testCoverageSampler(solver, this).computeCoverage()
             println("coverage value for $inputPath: ${coverage.coverageNumber}")
+            logger().debug("coverage.solverCheckCalls: ${coverage.solverCheckCalls}")
+
+            logger().debug("total time coverage: ${coverage.coverageComputationMillis} ms")
+
         }
 
     }

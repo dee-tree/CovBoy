@@ -5,8 +5,8 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 @OptIn(ExperimentalContracts::class)
-inline fun <T> withContext(configuration: Map<String, String> = emptyMap(), action: Context.() -> T) {
+inline fun <T> withContext(configuration: Map<String, String> = emptyMap(), action: Context.() -> T): T {
     contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
     val context = Context(configuration)
-    action(context)
+    return action(context).also { context.close() }
 }
