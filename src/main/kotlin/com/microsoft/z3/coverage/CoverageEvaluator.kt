@@ -52,7 +52,7 @@ class CoverageEvaluator(
         if (!value.isCertainBool) {
             return if (uncoveredValues[atom]?.isNotEmpty() == true) {
                 // in case of atom is free (not important atom)
-                removeFromUncovered(value)
+                removeFromUncovered(atom)
                 NonEffectingAtomCoverage(atom, context)
             } else {
                 EmptyAtomCoverage(atom)
