@@ -12,7 +12,7 @@ class AssertionsStorage(
     : Assertion,
 ) {
 
-    private val storage = mutableListOf<Assertion>(*initial)
+    private val storage = mutableSetOf<Assertion>(*initial)
 
     val size: Int
         get() = storage.size
@@ -22,7 +22,7 @@ class AssertionsStorage(
 
     private fun assertSafely(expr: BoolExpr, isLocal: Boolean): Assertion {
         val assertion = Assertion(expr, context, isLocal) { onAssertionChanged?.invoke(it) }
-        storage.find { it.uid == assertion.uid }?.let { return it }
+        storage.find { it.uid == assertion.uid }?.let { it.enable(); return it }
         return assertion.put(solver).also { storage.add(it) }
     }
 

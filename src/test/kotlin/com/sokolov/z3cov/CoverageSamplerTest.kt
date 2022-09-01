@@ -26,7 +26,8 @@ abstract class CoverageSamplerTest {
             val coverage = testCoverageSampler(solver, this).computeCoverage()
             println("coverage value for $inputPath: ${coverage.coverageNumber}")
             logger().debug("coverage.solverCheckCalls: ${coverage.solverCheckCalls}")
-
+            logger().debug("Free atoms portion: ${coverage.freeAtomsPortion}")
+            logger().debug("Total constrained atoms: ${coverage.atomsCoverage.size}")
             logger().debug("total time coverage: ${coverage.coverageComputationMillis} ms")
 
         }

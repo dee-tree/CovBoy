@@ -38,7 +38,7 @@ class Assertion(
         onAssertionChanged?.invoke(AssertionState(uid, enabled))
     }
 
-    override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expr = $expr)"
+    override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expression hash = ${expr.hashCode()})"
 }
 
 data class AssertionState(

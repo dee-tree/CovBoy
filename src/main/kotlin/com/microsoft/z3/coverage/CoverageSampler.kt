@@ -5,6 +5,7 @@ import com.microsoft.z3.Context
 import com.microsoft.z3.Model
 import com.microsoft.z3.Solver
 import com.microsoft.z3.Status
+import com.sokolov.z3cov.logger
 import kotlin.system.measureTimeMillis
 
 abstract class CoverageSampler(
@@ -13,17 +14,27 @@ abstract class CoverageSampler(
 ) {
     protected val customAssertionsStorage: AssertionsStorage = AssertionsStorage(solver, context, ::onAssertionChanged)
 
-    private val coverage = CoverageEvaluator(solver, context)
+    private val coverageEvaluator = CoverageEvaluator(solver, context)
 
     private var coverageResult: CoverageResult = CoverageResult(emptySet(), 0, 0)
 
+    protected val modelsEnumerator = ModelsEnumerator(
+        solver = solver,
+        context = context,
+        assertionsStorage = customAssertionsStorage,
+        check = ::checkWithAssumptions
+    )
 
-    // checks optimization
+
+    // checks optimization via last status remember
     private var lastCheckStatus: Status? = null
-    var isCheckNeed: Boolean = true
+    protected var isCheckNeed: Boolean = true
         private set
 
-    fun checkWithAssumptions(): Status {
+    private var satCount = 0
+    private var unsatCount = 0
+
+    protected fun checkWithAssumptions(): Status {
         if (!isCheckNeed)
             return lastCheckStatus!!
 
@@ -31,31 +42,39 @@ abstract class CoverageSampler(
 
         lastCheckStatus = solver.check(*customAssertionsStorage.assumptions.toTypedArray())
         isCheckNeed = false
+
+        when (lastCheckStatus) {
+            Status.SATISFIABLE -> satCount++
+            Status.UNSATISFIABLE -> unsatCount++
+        }
+
         return lastCheckStatus!!
     }
 
     protected abstract fun computeCoverage(
         coverModel: (Model) -> Set<AtomCoverageBase>,
-        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase
+        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
+        onImpossibleAtomValueFound: (atom: BoolExpr, impossibleValue: BoolExpr) -> Unit,
     )
 
     fun computeCoverage(): CoverageResult {
-        computeCoverage(::cover, ::coverAtom)
-        println("Coverage result: $coverageResult")
+        computeCoverage(::cover, ::coverAtom, ::onImpossibleAtomValueFound)
+        println(coverageResult)
+        logger().debug("Total SATs: $satCount (${satCount.toDouble() / (satCount+unsatCount)}); Total UNSATs: $unsatCount (${unsatCount.toDouble() / (satCount+unsatCount)})")
         return coverageResult
     }
 
     protected val isCovered: Boolean
-        get() = coverage.isCovered
+        get() = coverageEvaluator.isCovered
 
     protected val firstSemiCoveredAtom: Pair<BoolExpr, BoolExpr>?
-        get() = coverage.firstSemiCoveredAtom()
+        get() = coverageEvaluator.firstSemiCoveredAtom()
 
     private fun cover(model: Model): Set<AtomCoverageBase> {
         val modelCoverage: Set<AtomCoverageBase>
 
         val modelCoverageMillis = measureTimeMillis {
-            modelCoverage = coverage.cover(model)
+            modelCoverage = coverageEvaluator.cover(model)
         }
 
         coverageResult = coverageResult.copy(
@@ -68,7 +87,7 @@ abstract class CoverageSampler(
     private fun coverAtom(atom: BoolExpr, value: BoolExpr): AtomCoverageBase {
         val atomCoverage: AtomCoverageBase
 
-        val atomCoverageMillis = measureTimeMillis { atomCoverage = coverage.coverAtom(atom, value) }
+        val atomCoverageMillis = measureTimeMillis { atomCoverage = coverageEvaluator.coverAtom(atom, value) }
 
         coverageResult = coverageResult.copy(
             atomsCoverage = (coverageResult.atomsCoverage to setOf(atomCoverage)).merge(),
@@ -76,6 +95,11 @@ abstract class CoverageSampler(
         )
 
         return atomCoverage
+    }
+
+    private fun onImpossibleAtomValueFound(atom: BoolExpr, impossibleValue: BoolExpr) {
+        val atomCoverage: AtomCoverageBase
+        val atomCoverageMillis = measureTimeMillis { atomCoverage = coverageEvaluator.coverAtom(atom, impossibleValue) }
     }
 
     private fun onAssertionChanged(newState: AssertionState) {

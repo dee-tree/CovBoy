@@ -12,15 +12,26 @@ data class CoverageResult(
     val coverageNumber
         get() = atomsCoverage.sumOf { it.coverageValue } / atomsCoverage.size
 
+    val freeAtoms: List<AtomCoverageBase>
+        get() = atomsCoverage.filterIsInstance<NonEffectingAtomCoverage>()
+
+    val freeAtomsPortion: Double
+        get() = freeAtoms.size / atomsCoverage.size.toDouble()
+
     fun isEmpty(): Boolean = atomsCoverage.all { it.isEmpty }
 
     fun asStringInfo(): String = """
-        ${"-".repeat(5)} Coverage statistics ${"-".repeat(5)}
+        ${"-".repeat(5)} Coverage result ${"-".repeat(5)}
         ${"\t"} * Coverage computation measured (totally): $coverageComputationMillis ms
         ${"\t"} * \"solver-check\" calls: $solverCheckCalls
         
         Coverage number: $coverageNumber
+        Coverage per atom:
+        ${atomsCoverage.joinToString(separator = "\n") { "\t - $it" }}
+        ${"-".repeat(15)}
     """.trimIndent()
+
+    override fun toString(): String = asStringInfo()
 }
 
 sealed class AtomCoverageBase(
@@ -58,13 +69,20 @@ sealed class AtomCoverageBase(
 
 data class EmptyAtomCoverage(
     override val atom: BoolExpr
-) : AtomCoverageBase(atom, emptySet(), true)
+) : AtomCoverageBase(atom, emptySet(), true) {
+    override fun toString(): String {
+        return "EmptyAtomCoverage(atom = ${atom.toShortString()})"
+    }
+}
 
 data class AtomCoverage(
     override val atom: BoolExpr,
     override val values: Set<BoolExpr>,
 ) : AtomCoverageBase(atom, values, true) {
 
+    override fun toString(): String {
+        return "AtomCoverage(atom = ${atom.toShortString()}, values = ${values})"
+    }
 }
 
 class NonEffectingAtomCoverage(atom: BoolExpr, context: Context) : AtomCoverageBase(
@@ -72,9 +90,15 @@ class NonEffectingAtomCoverage(atom: BoolExpr, context: Context) : AtomCoverageB
     setOf(context.mkTrue(), context.mkFalse()),
     false
 ) {
-
+    override fun toString(): String {
+        return "NonEffectingAtomCoverage(atom = ${atom.toShortString()})"
+    }
 }
 
+private fun BoolExpr.toShortString(): String {
+    val exprRepresentation = this.toString()
+    return if (exprRepresentation.length < 50) exprRepresentation else exprRepresentation.take(40) + "... (hash: ${this.hashCode()})"
+}
 
 fun Pair<Collection<AtomCoverageBase>, Collection<AtomCoverageBase>>.merge(): Set<AtomCoverageBase> = buildSet {
 

@@ -2,7 +2,7 @@ package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
 
-internal class ModelsEnumerator(
+class ModelsEnumerator(
     private val solver: Solver,
     private val context: Context,
     private val assertionsStorage: AssertionsStorage,

@@ -1,7 +1,6 @@
 package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
-import com.sokolov.z3cov.logger
 
 class CoverageEvaluator(
     solver: Solver,
@@ -15,12 +14,9 @@ class CoverageEvaluator(
     val isCovered: Boolean
         get() = uncoveredValues.all { it.value.isEmpty() }
 
-    private val True: BoolExpr = context.mkTrue()
-    private val False: BoolExpr = context.mkFalse()
-
     init {
         atoms.forEach { atom ->
-            uncoveredValues[atom] = mutableSetOf(True, False)
+            uncoveredValues[atom] = mutableSetOf(context.mkTrue(), context.mkFalse())
         }
     }
 
@@ -40,14 +36,8 @@ class CoverageEvaluator(
 
             thisModelCoverage.add(coveredThisAtom)
 
-//            if (coveredThisAtom !is EmptyAtomCoverage) {
-//                thisModelCoverage.add(coveredThisAtom)
-//            }
-
         }
 
-        logger().debug("Covered: $covered; uncovered: $uncovered")
-        logger().trace("Covered atoms: $thisModelCoverage")
         return thisModelCoverage
     }
 
@@ -56,16 +46,37 @@ class CoverageEvaluator(
         ?.let { it.key to it.value.first() }
 
     fun coverAtom(atom: BoolExpr, value: BoolExpr): AtomCoverageBase {
-        if (!value.isCertainBool) return NonEffectingAtomCoverage(atom, context)
+        if (!value.isCertainBool) {
+            return if (uncoveredValues[atom]?.isNotEmpty() == true) {
+                // in case of atom is free (not important atom)
+                removeFromUncovered(value)
+                NonEffectingAtomCoverage(atom, context)
+            } else {
+                EmptyAtomCoverage(atom)
+            }
+        }
 
-        val covered = uncoveredValues[atom]?.remove(value) ?: return EmptyAtomCoverage(atom)
+        if (!removeFromUncovered(atom, value)) return EmptyAtomCoverage(atom)
+        return AtomCoverage(atom, setOf(value))
+    }
 
-        if (!covered) return EmptyAtomCoverage(atom)
+
+    /**
+     * @return true, if value was removed successful, false if uncoveredValues did not contain value
+     */
+    private fun removeFromUncovered(atom: BoolExpr, value: BoolExpr): Boolean {
+        val covered = uncoveredValues[atom]?.remove(value) ?: return false
 
         if (uncoveredValues[atom]?.isEmpty() == true) {
             uncoveredValues.remove(atom)
         }
-        return AtomCoverage(atom, setOf(value))
+
+        return covered
+    }
+
+    private fun removeFromUncovered(atom: BoolExpr) {
+        uncoveredValues[atom]?.clear()
+        uncoveredValues.remove(atom)
     }
 
 }
