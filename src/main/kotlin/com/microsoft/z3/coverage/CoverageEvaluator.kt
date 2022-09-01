@@ -14,6 +14,9 @@ class CoverageEvaluator(
     val isCovered: Boolean
         get() = uncoveredValues.all { it.value.isEmpty() }
 
+    val atomsWithSingleUncoveredValue: Map<BoolExpr, BoolExpr>
+        get() = uncoveredValues.entries.filter { it.value.size == 1 }.associate { it.key to it.value.first() }
+
     init {
         atoms.forEach { atom ->
             uncoveredValues[atom] = mutableSetOf(context.mkTrue(), context.mkFalse())

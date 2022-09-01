@@ -40,33 +40,40 @@ class ModelsIntersectionCoverage(
             // if coverage not changed, let's try to add new assert
             if (nonChangedCoverageIterations >= nonChangedCoverageIterationsLimit) {
                 logger().debug("Jump to another atoms in the formula due to $nonChangedCoverageIterationsLimit times coverage didn't change")
-                val uncoveredAtom = firstSemiCoveredAtom
+                val semiUncoveredAtoms = atomsWithSingleUncoveredValue
 
-                logger().debug("first semi-uncovered atom: $uncoveredAtom")
+                logger().trace("atoms with single uncovered value: ${semiUncoveredAtoms.size}")
 
-                if (uncoveredAtom == null) {
+                if (semiUncoveredAtoms.isEmpty()) {
                     nonChangedCoverageIterations = 0
                     continue
                 }
 
-                val uncoveredAtomAsExpr = if (uncoveredAtom.second.isTrue) uncoveredAtom.first
-                else !uncoveredAtom.first
+                val rememberedEnabledAssertions = customAssertionsStorage.assertions
+                    .filter { !it.isLocal && it.enabled }
+                    .onEach(Assertion::disable)
 
-                assertion = customAssertionsStorage.assert(uncoveredAtomAsExpr, false)
+                val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(context)
+
+                assertion = customAssertionsStorage.assert(semiUncoveredAtomsAsExpr, false)
 
                 when (checkWithAssumptions()) {
                     Status.SATISFIABLE -> {
                         satCount++
-                        coverageChanged = coverAtom(uncoveredAtom.first, uncoveredAtom.second) !is EmptyAtomCoverage
-
-                        // disable assertion, because it causes a strong distortion (hard assert on the atom!)
-                        assertion.disable()
+                        val modelCoverage = coverModel(solver.model)
+                        coverageChanged = modelCoverage.any { it !is EmptyAtomCoverage }
                     }
                     Status.UNSATISFIABLE -> {
                         unsatCount++
-                        resolveConflict(assertion, onImpossibleAtomValueFound)
+                        atomsWithSingleUncoveredValue.forEach(onImpossibleAtomValueFound)
                     }
                 }
+
+                // disable assertion, because it causes a strong distortion (hard assert on the atom!)
+                assertion.disable()
+
+                rememberedEnabledAssertions.forEach(Assertion::enable)
+
             } else {
                 logger().debug("Extract intersections of atoms in $intersectionSize models")
                 val currentBoundModels = modelsEnumerator.take(intersectionSize)
@@ -102,7 +109,7 @@ class ModelsIntersectionCoverage(
                 }
                 logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
 
-                val intersectionConstraint = intersection.connectWithAnd(context)
+                val intersectionConstraint = intersection.mergeWithAnd(context)
 
                 val negatedIntersection = !intersectionConstraint
                 logger().trace("Add constraint on negated intersection")

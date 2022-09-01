@@ -67,6 +67,9 @@ abstract class CoverageSampler(
     protected val isCovered: Boolean
         get() = coverageEvaluator.isCovered
 
+    protected val atomsWithSingleUncoveredValue: Map<BoolExpr, BoolExpr>
+        get() = coverageEvaluator.atomsWithSingleUncoveredValue
+
     protected val firstSemiCoveredAtom: Pair<BoolExpr, BoolExpr>?
         get() = coverageEvaluator.firstSemiCoveredAtom()
 

@@ -20,8 +20,10 @@ class ModelsEnumerator(
     fun nextModel(): Pair<Model, Assertion> {
         current = solver.model
         // get incomplete models to avoid "unknown"/"undefined" predicates
-        val currentConstraints = atoms.map { it to current.eval(it, false) }
-            .filter { it.second.isCertainBool }.connectWithAnd(context)
+        val currentConstraints = atoms
+            .map { it to current.eval(it, false) }
+            .filter { it.second.isCertainBool }
+            .mergeWithAnd(context)
 
         val result = current to assertionsStorage.assert(!currentConstraints, true)
             .also { if (!it.enabled) it.enable() }
@@ -51,20 +53,28 @@ class ModelsEnumerator(
     }
 }
 
-internal fun Collection<Pair<BoolExpr, Expr>>.connectWithAnd(context: Context): BoolExpr {
-    with(context) {
-        if (size == 1) return first().let {
-            when (it.second) {
-                mkFalse() -> !it.first
-//                mkTrue() -> it.first
-                else -> it.first
-            }
+internal fun Collection<Pair<BoolExpr, Expr>>.mergeWith(merger: (Array<out BoolExpr>) -> BoolExpr): BoolExpr {
+    if (size == 1) return first().let {
+        when {
+            it.second.isFalse -> !it.first
+            else -> it.first
         }
-
-        return and(
-            *(filter { it.second == mkTrue() }.map { it.first }
-                    + filter { it.second == mkFalse() }.map { !it.first })
-                .toTypedArray()
-        )
     }
+
+    return merger(
+        (filter { it.second.isTrue }.map { it.first }
+                + filter { it.second.isFalse }.map { !it.first }
+                ).toTypedArray()
+    )
 }
+
+internal fun Collection<Pair<BoolExpr, Expr>>.mergeWithAnd(context: Context): BoolExpr = mergeWith(context::and)
+internal fun Collection<Pair<BoolExpr, Expr>>.mergeWithOr(context: Context): BoolExpr = mergeWith(context::or)
+
+internal fun Map<BoolExpr, Expr>.mergeWithAnd(context: Context): BoolExpr = this.entries
+    .map { it.key to it.value }
+    .mergeWithAnd(context)
+
+internal fun Map<BoolExpr, Expr>.mergeWithOr(context: Context): BoolExpr = this.entries
+    .map { it.key to it.value }
+    .mergeWithOr(context)
