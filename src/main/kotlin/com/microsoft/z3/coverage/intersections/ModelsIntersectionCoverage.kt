@@ -1,6 +1,7 @@
-package com.microsoft.z3.coverage
+package com.microsoft.z3.coverage.intersections
 
 import com.microsoft.z3.*
+import com.microsoft.z3.coverage.*
 import com.sokolov.z3cov.logger
 
 class ModelsIntersectionCoverage(
@@ -17,19 +18,12 @@ class ModelsIntersectionCoverage(
     private var uselessIntersectionModelsCoverage = 0
     private var usefulIntersectionModelsCoverage = 0
 
-    private var satCount = 0
-    private var unsatCount = 0
 
     override fun computeCoverage(
         coverModel: (Model) -> Set<AtomCoverageBase>,
         coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAtomValueFound: (atom: BoolExpr, impossibleValue: BoolExpr) -> Unit
+        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit
     ) {
-        if (checkWithAssumptions() != Status.SATISFIABLE) {
-            logger().warn("Formula is UNSAT initially")
-            return
-        }
-
         do {
             if (nonChangedCoverageIterations > 0)
                 logger().trace("Non-changed coverage iterations: $nonChangedCoverageIterations")
@@ -57,16 +51,17 @@ class ModelsIntersectionCoverage(
 
                 assertion = customAssertionsStorage.assert(semiUncoveredAtomsAsExpr, false)
 
-                when (checkWithAssumptions()) {
+                when (checkWithAssumptions(checkStatusId())) {
                     Status.SATISFIABLE -> {
-                        satCount++
                         val modelCoverage = coverModel(solver.model)
                         coverageChanged = modelCoverage.any { it !is EmptyAtomCoverage }
                     }
                     Status.UNSATISFIABLE -> {
-                        unsatCount++
-                        atomsWithSingleUncoveredValue.forEach(onImpossibleAtomValueFound)
+                        atomsWithSingleUncoveredValue
+                            .map { Assignment(it.key, it.value) }
+                            .forEach(onImpossibleAssignmentFound)
                     }
+                    Status.UNKNOWN -> throw IllegalStateException("Unknown result of check")
                 }
 
                 // disable assertion, because it causes a strong distortion (hard assert on the atom!)
@@ -117,16 +112,9 @@ class ModelsIntersectionCoverage(
 
                 assertion = negIntersectionAssertion
 
-                when (checkWithAssumptions()) {
-                    Status.SATISFIABLE -> {
-                        satCount++
-                    }
-                    Status.UNSATISFIABLE -> {
-                        unsatCount++
-
-                        // conflicted intersection found
-                        resolveConflict(assertion, onImpossibleAtomValueFound)
-                    }
+                if (checkWithAssumptions(checkStatusId()) == Status.UNSATISFIABLE) {
+                    // conflicted intersection found
+                    resolveConflict(assertion, onImpossibleAssignmentFound)
                 }
             }
 
@@ -137,7 +125,6 @@ class ModelsIntersectionCoverage(
         logger().info("Useful models coverage from intersection: $usefulIntersectionModelsCoverage models")
         logger().info("Useless models coverage from intersection: $uselessIntersectionModelsCoverage models")
         logger().info("Useful / useless coeff of models coverage from intersection: ${usefulIntersectionModelsCoverage.toDouble() / uselessIntersectionModelsCoverage}")
-        logger().debug("SATs: $satCount (${satCount.toDouble() / (satCount + unsatCount)}); UNSATs: $unsatCount (${unsatCount.toDouble() / (satCount + unsatCount)})")
     }
 
     /**
@@ -145,7 +132,7 @@ class ModelsIntersectionCoverage(
      */
     private fun resolveConflict(
         assertion: Assertion,
-        onImpossibleAtomValueFound: (atom: BoolExpr, impossibleValue: BoolExpr) -> Unit,
+        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit,
     ) {
         logger().trace("Resolve conflict with $assertion")
         val unsatCore = solver.unsatCore
@@ -170,7 +157,7 @@ class ModelsIntersectionCoverage(
                 logger().trace("Found unachievable value of atom: $assertion")
 
                 val (atom, value) = if (assertion.expr.isNot) !assertion.expr to context.mkFalse() else assertion.expr to context.mkTrue()
-                onImpossibleAtomValueFound(atom, value)
+                onImpossibleAssignmentFound(Assignment(atom, value))
             }
         }
     }

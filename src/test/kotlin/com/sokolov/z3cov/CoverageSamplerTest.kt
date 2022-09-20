@@ -1,10 +1,7 @@
 package com.sokolov.z3cov
 
-import com.microsoft.z3.Context
-import com.microsoft.z3.Solver
+import com.microsoft.z3.*
 import com.microsoft.z3.coverage.CoverageSampler
-import com.microsoft.z3.solver
-import com.microsoft.z3.withContext
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -22,10 +19,12 @@ abstract class CoverageSamplerTest {
         withContext {
             val solver = solver(true)
             solver.fromFile(inputPath)
+            val atomsCount = solver.atoms.size
 
-            val coverage = testCoverageSampler(solver, this).computeCoverage()
+            val coverage = coverageSampler(solver, this).computeCoverage()
             println("coverage value for $inputPath: ${coverage.coverageNumber}")
             logger().debug("coverage.solverCheckCalls: ${coverage.solverCheckCalls}")
+            logger().debug("Atoms count: $atomsCount (free: ${coverage.freeAtoms})")
             logger().debug("Free atoms portion: ${coverage.freeAtomsPortion}")
             logger().debug("Total constrained atoms: ${coverage.atomsCoverage.size}")
             logger().debug("total time coverage: ${coverage.coverageComputationMillis} ms")
@@ -34,7 +33,7 @@ abstract class CoverageSamplerTest {
 
     }
 
-    abstract fun testCoverageSampler(solver: Solver, context: Context): CoverageSampler
+    abstract fun coverageSampler(solver: Solver, context: Context): CoverageSampler
 
 
     companion object {

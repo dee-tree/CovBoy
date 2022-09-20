@@ -24,7 +24,7 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
         withContext {
             val solver1 = solver(true)
             solver1.fromFile(inputPath)
-            coverage = testCoverageSampler(solver1, this).computeCoverage()
+            coverage = coverageSampler(solver1, this).computeCoverage()
 
             val solver2 = solver(true)
             solver2.fromFile(inputPath)

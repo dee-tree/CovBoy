@@ -1,10 +1,6 @@
 package com.microsoft.z3.coverage
 
-import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Context
-import com.microsoft.z3.Model
-import com.microsoft.z3.Solver
-import com.microsoft.z3.Status
+import com.microsoft.z3.*
 import com.sokolov.z3cov.logger
 import kotlin.system.measureTimeMillis
 
@@ -31,22 +27,21 @@ abstract class CoverageSampler(
     protected var isCheckNeed: Boolean = true
         private set
 
-    private var satCount = 0
-    private var unsatCount = 0
+    private val checkCounts = mutableMapOf<String, ChecksCounter>()
 
-    protected fun checkWithAssumptions(): Status {
+    protected fun checkWithAssumptions(reason: String = ""): Status {
         if (!isCheckNeed)
             return lastCheckStatus!!
 
         coverageResult = coverageResult.copy(solverCheckCalls = coverageResult.solverCheckCalls + 1)
 
-        lastCheckStatus = solver.check(*customAssertionsStorage.assumptions.toTypedArray())
+        lastCheckStatus = solver.check(*customAssertionsStorage.assumptions.toTypedArray()) ?: throw IllegalStateException("check status is null")
         isCheckNeed = false
 
-        when (lastCheckStatus) {
-            Status.SATISFIABLE -> satCount++
-            Status.UNSATISFIABLE -> unsatCount++
-        }
+        checkCounts.getOrPut(reason) { ChecksCounter() }.update(lastCheckStatus!!)
+
+        if (lastCheckStatus == Status.UNKNOWN)
+            throw IllegalStateException("got unknown status on solver check...")
 
         return lastCheckStatus!!
     }
@@ -54,13 +49,18 @@ abstract class CoverageSampler(
     protected abstract fun computeCoverage(
         coverModel: (Model) -> Set<AtomCoverageBase>,
         coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAtomValueFound: (atom: BoolExpr, impossibleValue: BoolExpr) -> Unit,
+        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit,
     )
 
     fun computeCoverage(): CoverageResult {
-        computeCoverage(::cover, ::coverAtom, ::onImpossibleAtomValueFound)
+        if (checkWithAssumptions() != Status.SATISFIABLE) {
+            System.err.println("Formula is $lastCheckStatus. No coverage is available!")
+            throw IllegalStateException("Formula is $lastCheckStatus. No coverage is available!")
+        }
+
+        computeCoverage(::cover, ::coverAtom, ::onImpossibleAssignmentFound)
         println(coverageResult)
-        logger().debug("Total SATs: $satCount (${satCount.toDouble() / (satCount+unsatCount)}); Total UNSATs: $unsatCount (${unsatCount.toDouble() / (satCount+unsatCount)})")
+        logger().debug("Checks statistics: $checkCounts")
         return coverageResult
     }
 
@@ -69,6 +69,9 @@ abstract class CoverageSampler(
 
     protected val atomsWithSingleUncoveredValue: Map<BoolExpr, BoolExpr>
         get() = coverageEvaluator.atomsWithSingleUncoveredValue
+
+    protected val uncoveredAtomsWithAnyValue: Set<Assignment<BoolExpr>>
+        get() = coverageEvaluator.uncoveredAtomsWithAnyValue
 
     protected val firstSemiCoveredAtom: Pair<BoolExpr, BoolExpr>?
         get() = coverageEvaluator.firstSemiCoveredAtom()
@@ -100,12 +103,28 @@ abstract class CoverageSampler(
         return atomCoverage
     }
 
-    private fun onImpossibleAtomValueFound(atom: BoolExpr, impossibleValue: BoolExpr) {
+    private fun onImpossibleAssignmentFound(assignment: Assignment<BoolExpr>) {
         val atomCoverage: AtomCoverageBase
-        val atomCoverageMillis = measureTimeMillis { atomCoverage = coverageEvaluator.coverAtom(atom, impossibleValue) }
+        val atomCoverageMillis = measureTimeMillis {
+            atomCoverage = coverageEvaluator.excludeFromCoverageArea(assignment)
+        }
     }
 
     private fun onAssertionChanged(newState: AssertionState) {
         isCheckNeed = true
     }
 }
+
+private data class ChecksCounter(
+    var sat: Int = 0,
+    var unsat: Int = 0,
+    var unknown: Int = 0
+) {
+    fun update(status: Status): Unit = when (status) {
+        Status.SATISFIABLE -> sat += 1
+        Status.UNSATISFIABLE -> unsat += 1
+        Status.UNKNOWN -> unknown += 1
+    }
+}
+
+fun <T : CoverageSampler> T.checkStatusId(): String = this::class.simpleName ?: this::class.toString()

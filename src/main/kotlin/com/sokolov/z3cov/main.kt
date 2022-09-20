@@ -1,7 +1,6 @@
 package com.sokolov.z3cov
 
-import com.microsoft.z3.coverage.ModelsEnumerationCoverage
-import com.microsoft.z3.coverage.ModelsIntersectionCoverage
+import com.microsoft.z3.coverage.intersections.ModelsIntersectionCoverage
 import com.microsoft.z3.solver
 import com.microsoft.z3.withContext
 

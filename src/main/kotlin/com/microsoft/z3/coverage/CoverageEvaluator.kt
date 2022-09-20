@@ -17,6 +17,10 @@ class CoverageEvaluator(
     val atomsWithSingleUncoveredValue: Map<BoolExpr, BoolExpr>
         get() = uncoveredValues.entries.filter { it.value.size == 1 }.associate { it.key to it.value.first() }
 
+    val uncoveredAtomsWithAnyValue: Set<Assignment<BoolExpr>>
+        get() = uncoveredValues.entries.map { Assignment(it.key, it.value.random()) }.toSet()
+
+
     init {
         atoms.forEach { atom ->
             uncoveredValues[atom] = mutableSetOf(context.mkTrue(), context.mkFalse())
@@ -47,6 +51,11 @@ class CoverageEvaluator(
     fun firstSemiCoveredAtom(): Pair<BoolExpr, BoolExpr>? = uncoveredValues.entries
         .firstOrNull { it.value.size == 1 }
         ?.let { it.key to it.value.first() }
+
+
+    fun excludeFromCoverageArea(atom: Assignment<BoolExpr>): AtomCoverageBase {
+        return coverAtom(atom.expr, atom.value)
+    }
 
     fun coverAtom(atom: BoolExpr, value: BoolExpr): AtomCoverageBase {
         if (!value.isCertainBool) {

@@ -3,11 +3,10 @@ package com.sokolov.z3cov
 import com.microsoft.z3.Context
 import com.microsoft.z3.Solver
 import com.microsoft.z3.coverage.CoverageSampler
-import com.microsoft.z3.coverage.ModelsEnumerationCoverage
+import com.microsoft.z3.coverage.unitpropogation.UnitPropagationBasedCoverageSampler
 
-class DullModelsEnumerationTest : CoverageSamplerTest() {
+class UnitPropagationBasedCoverageSamplerTest : CoverageSamplerTest() {
     override fun coverageSampler(solver: Solver, context: Context): CoverageSampler {
-        return ModelsEnumerationCoverage(solver, context)
+        return UnitPropagationBasedCoverageSampler(solver, context)
     }
 }
-

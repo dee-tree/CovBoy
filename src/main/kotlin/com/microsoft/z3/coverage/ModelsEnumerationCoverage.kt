@@ -8,12 +8,8 @@ class ModelsEnumerationCoverage(solver: Solver, context: Context) : CoverageSamp
     override fun computeCoverage(
         coverModel: (Model) -> Set<AtomCoverageBase>,
         coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAtomValueFound: (atom: BoolExpr, impossibleValue: BoolExpr) -> Unit
+        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit
     ) {
-        modelsEnumerator.forEach {
-            coverModel(it)
-        }
-
         logger().info("Traversed ${modelsEnumerator.traversedModelsCount} models")
     }
 }
