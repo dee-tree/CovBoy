@@ -1,17 +1,7 @@
-package com.sokolov.smt.sampling
+package com.sokolov.smt.sampler
 
-import com.microsoft.z3.Context
-import com.microsoft.z3.Solver
-import com.microsoft.z3.coverage.CoverageResult
-import com.microsoft.z3.coverage.ModelsEnumerationCoverage
-import com.microsoft.z3.solver
-import com.microsoft.z3.withContext
-import com.sokolov.smt.sampling.logger
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.MethodSource
-import kotlin.test.assertContains
-import kotlin.test.assertTrue
-
+// TODO CoverageSamplerAgainstDullEnumerationTest
+/*
 abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest() {
 
     @ParameterizedTest
@@ -22,7 +12,7 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
         val coverage: CoverageResult
         val dullEnumCoverage: CoverageResult
 
-        withContext {
+//        withContext {
             val solver1 = solver(true)
             solver1.fromFile(inputPath)
             coverage = coverageSampler(solver1, this).computeCoverage()
@@ -38,10 +28,11 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
 
         logger().debug("coverage number: ${coverage.coverageNumber}")
         logger().debug("dull enumeration coverage number: ${dullEnumCoverage.coverageNumber}")
-        /**
+*
          * < 0 => worse than dull enumeration
          * = 0 => same as dull enumeration
-         */
+
+
         logger().info("coverage difference: ${coverage.coverageNumber - dullEnumCoverage.coverageNumber}")
 
         logger().debug("coverage.solverCheckCalls vs ideal coverage.solverCheckCalls: ${coverage.solverCheckCalls} VS ${dullEnumCoverage.solverCheckCalls}")
@@ -60,5 +51,6 @@ abstract class CoverageSamplerAgainstDullEnumerationTest : CoverageSamplerTest()
 
 private fun dullEnumCoverageSampler(solver: Solver, context: Context): ModelsEnumerationCoverage =
     ModelsEnumerationCoverage(solver, context)
+*/
 
 

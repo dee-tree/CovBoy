@@ -1,12 +1,9 @@
-package com.sokolov.smt.sampling
+package com.sokolov.smt.sampler
 
-import com.microsoft.z3.Context
-import com.microsoft.z3.Solver
-import com.microsoft.z3.coverage.CoverageSampler
-import com.microsoft.z3.coverage.unsatcore.UnsatCoreBasedCoverageSampler
-
+// TODO: UnsatCoreBasedCoverageSamplerTest
+/*
 class UnsatCoreBasedCoverageSamplerTest : CoverageSamplerTest() {
     override fun coverageSampler(solver: Solver, context: Context): CoverageSampler {
         return UnsatCoreBasedCoverageSampler(solver, context)
     }
-}
+}*/

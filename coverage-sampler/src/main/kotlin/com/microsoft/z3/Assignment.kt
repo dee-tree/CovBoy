@@ -1,11 +1,18 @@
 package com.microsoft.z3
 
-class Assignment <T: Expr>(val expr: T, val value: T) {
+import com.sokolov.smt.isFalse
+import com.sokolov.smt.isTrue
+import com.sokolov.smt.not
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.Formula
+import org.sosy_lab.java_smt.api.FormulaManager
 
-    fun asExpr(): BoolExpr = when {
-        expr is BoolExpr && value.isFalse -> !expr
-        expr is BoolExpr && value.isTrue -> expr
-        else -> expr eq value
+class Assignment <T: Formula>(val expr: T, val value: T) {
+
+    fun asExpr(formulaManager: FormulaManager): BooleanFormula = when {
+        expr is BooleanFormula && value.isFalse(formulaManager.booleanFormulaManager) -> expr.not(formulaManager.booleanFormulaManager)
+        expr is BooleanFormula && value.isTrue(formulaManager.booleanFormulaManager) -> expr
+        else -> formulaManager.parse("(= ($expr) ($value))")
     }
 
     override fun toString(): String = "AssignedExpr(expr = $expr, value = $value)"

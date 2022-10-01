@@ -1,30 +1,33 @@
 package com.microsoft.z3.coverage
 
-import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Context
-import com.microsoft.z3.Solver
-import com.microsoft.z3.implies
+import com.sokolov.smt.implication
+import com.sokolov.smt.prover.IProver
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.FormulaType
+import org.sosy_lab.java_smt.api.ProverEnvironment
 
 class Assertion(
-    val expr: BoolExpr,
-    context: Context,
+    private val prover: IProver,
+    val expr: BooleanFormula,
     val isLocal: Boolean,
     var onAssertionChanged: ((AssertionState) -> Unit)? = null
 ) {
     val uid = "uid:${expr.hashCode()}"
-    val uidExpr: BoolExpr = context.mkBoolConst(uid)
+    val uidExpr: BooleanFormula = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, uid)
 
     val assumptionName = "cond:${expr.hashCode()}"
-    val conditionExpr = context.mkBoolConst(assumptionName)
+    val conditionExpr = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, assumptionName)
 
-    val assumption: BoolExpr
+    val assumption: BooleanFormula
         get() = conditionExpr
 
     var enabled = true
         private set
 
-    fun put(solver: Solver): Assertion = apply {
-        solver.assertAndTrack(assumption implies expr, uidExpr)
+    private val asFormula = prover.context.formulaManager.implication(assumption, expr)
+
+    fun put(prover: ProverEnvironment): Assertion = apply {
+        prover.addConstraint(asFormula)
         onAssertionChanged?.invoke(AssertionState(uid, enabled))
     }
 

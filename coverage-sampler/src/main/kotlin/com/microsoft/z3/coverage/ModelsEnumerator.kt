@@ -1,35 +1,41 @@
 package com.microsoft.z3.coverage
 
-import com.microsoft.z3.*
+import com.microsoft.z3.Assignment
+import com.sokolov.smt.*
+import com.sokolov.smt.prover.IProver
+import org.sosy_lab.java_smt.api.*
 
 class ModelsEnumerator(
-    private val solver: Solver,
-    private val context: Context,
+    private val prover: IProver,
+    private val formulaManager: FormulaManager,
     private val assertionsStorage: AssertionsStorage,
-    private val check: () -> Status = solver::check
+    private val check: () -> Status = prover::check
 ) {
     private lateinit var current: Model
 
-    private val atoms = solver.atoms
+    private val predicates = prover.booleans
 
     var traversedModelsCount = 0
         private set
 
-    fun hasNext(): Boolean = check() == Status.SATISFIABLE
+    fun hasNext(): Boolean = check() == Status.SAT
 
-    fun nextModel(): Pair<Model, Assertion> {
-        current = solver.model
+
+    fun nextModel(onModel: (Model) -> Unit) {
+        current = prover.model
+
+        onModel(current)
+
         // get incomplete models to avoid "unknown"/"undefined" predicates
-        val currentConstraints = atoms
-            .map { it to current.eval(it, false) }
-            .filter { it.second.isCertainBool }
-            .mergeWithAnd(context)
+        val currentConstraints = predicates
+            .map { it to current.evaluate(it) } // TODO: keep in mind that model's eval must be incomplete producer
+            .mapNotNull { if (it.second == null) null else Assignment(it.first, formulaManager.booleanFormulaManager.makeBoolean(it.second!!)) }
+            .filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
+            .mergeWithAnd(formulaManager.booleanFormulaManager)
 
-        val result = current to assertionsStorage.assert(!currentConstraints, true)
+        assertionsStorage.assert(currentConstraints.not(formulaManager.booleanFormulaManager), true)
             .also { if (!it.enabled) it.enable() }
         traversedModelsCount++
-
-        return result
     }
 
     fun take(count: Int): List<Model> = buildList {
@@ -38,43 +44,70 @@ class ModelsEnumerator(
         repeat(count) {
             if (!hasNext())
                 return@buildList
-            add(nextModel().first)
+            nextModel { add(it) }
         }
     }
 
     fun all(): List<Model> = buildList {
         while (hasNext())
-            add(nextModel().first)
+            nextModel { add(it) }
     }
 
     fun forEach(action: (Model) -> Unit) {
         while (hasNext())
-            action(nextModel().first)
+            nextModel(action)
     }
 }
 
-internal fun Collection<Pair<BoolExpr, Expr>>.mergeWith(merger: (Array<out BoolExpr>) -> BoolExpr): BoolExpr {
+internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWith(
+    merger: (Array<out BooleanFormula>) -> BooleanFormula,
+    formulaManager: BooleanFormulaManager
+): BooleanFormula {
     if (size == 1) return first().let {
         when {
-            it.second.isFalse -> !it.first
+            it.second.isFalse(formulaManager) -> it.first.not(formulaManager)
             else -> it.first
         }
     }
 
     return merger(
-        (filter { it.second.isTrue }.map { it.first }
-                + filter { it.second.isFalse }.map { !it.first }
+        (filter { it.second.isTrue(formulaManager) }.map { it.first }
+                + filter { it.second.isFalse(formulaManager) }.map { it.first.not(formulaManager) }
                 ).toTypedArray()
     )
 }
 
-internal fun Collection<Pair<BoolExpr, Expr>>.mergeWithAnd(context: Context): BoolExpr = mergeWith(context::and)
-internal fun Collection<Pair<BoolExpr, Expr>>.mergeWithOr(context: Context): BoolExpr = mergeWith(context::or)
+@JvmName("mergeWithAssignmentOfBooleanFormula")
+internal fun Collection<Assignment<BooleanFormula>>.mergeWith(
+    merger: (Array<out BooleanFormula>) -> BooleanFormula,
+    formulaManager: BooleanFormulaManager
+): BooleanFormula {
+    if (size == 1) return first().let {
+        when {
+            it.value.isFalse(formulaManager) -> it.expr.not(formulaManager)
+            else -> it.expr
+        }
+    }
 
-internal fun Map<BoolExpr, Expr>.mergeWithAnd(context: Context): BoolExpr = this.entries
-    .map { it.key to it.value }
-    .mergeWithAnd(context)
+    return merger(
+        (filter { it.value.isTrue(formulaManager) }.map { it.expr }
+                + filter { it.value.isFalse(formulaManager) }.map { it.expr.not(formulaManager) }
+                ).toTypedArray()
+    )
+}
 
-internal fun Map<BoolExpr, Expr>.mergeWithOr(context: Context): BoolExpr = this.entries
+
+internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWithAnd(formulaManager: BooleanFormulaManager): BooleanFormula = mergeWith(formulaManager::and, formulaManager)
+
+@JvmName("mergeWithAndAssignmentOfBooleanFormula")
+internal fun Collection<Assignment<BooleanFormula>>.mergeWithAnd(formulaManager: BooleanFormulaManager): BooleanFormula = mergeWith(formulaManager::and, formulaManager)
+
+internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWithOr(formulaManager: BooleanFormulaManager): BooleanFormula = mergeWith(formulaManager::or, formulaManager)
+
+internal fun Map<BooleanFormula, Formula>.mergeWithAnd(formulaManager: BooleanFormulaManager): BooleanFormula = this.entries
     .map { it.key to it.value }
-    .mergeWithOr(context)
+    .mergeWithAnd(formulaManager)
+
+internal fun Map<BooleanFormula, Formula>.mergeWithOr(formulaManager: BooleanFormulaManager): BooleanFormula = this.entries
+    .map { it.key to it.value }
+    .mergeWithOr(formulaManager)

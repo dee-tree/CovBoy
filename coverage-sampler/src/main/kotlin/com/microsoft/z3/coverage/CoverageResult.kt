@@ -1,7 +1,7 @@
 package com.microsoft.z3.coverage
 
-import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Context
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.BooleanFormulaManager
 
 data class CoverageResult(
     val atomsCoverage: Set<AtomCoverageBase> = emptySet(),
@@ -11,6 +11,9 @@ data class CoverageResult(
 
     val coverageNumber
         get() = atomsCoverage.sumOf { it.coverageValue } / atomsCoverage.size
+
+    val atomsCount: Int
+        get() = atomsCoverage.size
 
     val freeAtoms: List<AtomCoverageBase>
         get() = atomsCoverage.filterIsInstance<NonEffectingAtomCoverage>()
@@ -35,8 +38,8 @@ data class CoverageResult(
 }
 
 sealed class AtomCoverageBase(
-    open val atom: BoolExpr,
-    open val values: Set<BoolExpr>,
+    open val expr: BooleanFormula,
+    open val values: Set<BooleanFormula>,
     open val definedBySolver: Boolean // means that this atom affect the formula
 ) {
     val coverageValue: Double
@@ -50,7 +53,7 @@ sealed class AtomCoverageBase(
 
 
     fun update(newCoverage: AtomCoverageBase): AtomCoverageBase {
-        require(atom == newCoverage.atom)
+        require(expr == newCoverage.expr)
 
         return when {
             this is NonEffectingAtomCoverage -> this
@@ -58,57 +61,57 @@ sealed class AtomCoverageBase(
             this is EmptyAtomCoverage -> newCoverage
             newCoverage is EmptyAtomCoverage -> this
 
-            else -> AtomCoverage(atom, values + newCoverage.values)
+            else -> AtomCoverage(expr, values + newCoverage.values)
         }
     }
 
-    fun coverNewValue(value: BoolExpr): AtomCoverageBase =
+    fun coverNewValue(value: BooleanFormula): AtomCoverageBase =
         if (value in values) this
-        else AtomCoverage(atom, values + value)
+        else AtomCoverage(expr, values + value)
 }
 
 data class EmptyAtomCoverage(
-    override val atom: BoolExpr
-) : AtomCoverageBase(atom, emptySet(), true) {
+    override val expr: BooleanFormula
+) : AtomCoverageBase(expr, emptySet(), true) {
     override fun toString(): String {
-        return "EmptyAtomCoverage(atom = ${atom.toShortString()})"
+        return "EmptyAtomCoverage(${expr.toShortString()})"
     }
 }
 
 data class AtomCoverage(
-    override val atom: BoolExpr,
-    override val values: Set<BoolExpr>,
-) : AtomCoverageBase(atom, values, true) {
+    override val expr: BooleanFormula,
+    override val values: Set<BooleanFormula>,
+) : AtomCoverageBase(expr, values, true) {
 
     override fun toString(): String {
-        return "AtomCoverage(atom = ${atom.toShortString()}, values = ${values})"
+        return "AtomCoverage(expr = ${expr.toShortString()}, values = ${values})"
     }
 }
 
-class NonEffectingAtomCoverage(atom: BoolExpr, context: Context) : AtomCoverageBase(
+// Free atom coverage
+class NonEffectingAtomCoverage(atom: BooleanFormula, formulaManager: BooleanFormulaManager) : AtomCoverageBase(
     atom,
-    setOf(context.mkTrue(), context.mkFalse()),
+    setOf(formulaManager.makeTrue(), formulaManager.makeFalse()),
     false
 ) {
     override fun toString(): String {
-        return "NonEffectingAtomCoverage(atom = ${atom.toShortString()})"
+        return "NonEffectingAtomCoverage(${expr.toShortString()})"
     }
 }
 
-private fun BoolExpr.toShortString(): String {
+private fun BooleanFormula.toShortString(): String {
     val exprRepresentation = this.toString()
     return if (exprRepresentation.length < 50) exprRepresentation else exprRepresentation.take(40) + "... (hash: ${this.hashCode()})"
 }
 
 fun Pair<Collection<AtomCoverageBase>, Collection<AtomCoverageBase>>.merge(): Set<AtomCoverageBase> = buildSet {
 
-    val intersectedAtoms = first.map { it.atom }.intersect(second.map { it.atom }.toSet())
-
+    val intersectedAtoms = first.map { it.expr }.intersect(second.map { it.expr }.toSet())
 
     intersectedAtoms.forEach { intersectedAtom ->
-        add(first.first { it.atom == intersectedAtom }.update(second.first { it.atom == intersectedAtom }))
+        add(first.first { it.expr == intersectedAtom }.update(second.first { it.expr == intersectedAtom }))
     }
 
-    addAll((first - first.mapNotNull { if (it.atom in intersectedAtoms) it else null }
-        .toSet()) + (second - second.mapNotNull { if (it.atom in intersectedAtoms) it else null }.toSet()))
+    addAll((first - first.mapNotNull { if (it.expr in intersectedAtoms) it else null }
+        .toSet()) + (second - second.mapNotNull { if (it.expr in intersectedAtoms) it else null }.toSet()))
 }

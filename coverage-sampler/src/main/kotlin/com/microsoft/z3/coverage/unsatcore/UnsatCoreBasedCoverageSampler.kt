@@ -6,6 +6,7 @@ import com.microsoft.z3.coverage.AtomCoverageBase
 import com.microsoft.z3.coverage.CoverageSampler
 import com.microsoft.z3.coverage.EmptyAtomCoverage
 
+/*
 class UnsatCoreBasedCoverageSampler(solver: Solver, context: Context) : CoverageSampler(solver, context) {
 
     override fun computeCoverage(
@@ -58,4 +59,4 @@ class UnsatCoreBasedCoverageSampler(solver: Solver, context: Context) : Coverage
 
         ucAssertions.forEach(Assertion::disable)
     }
-}
+}*/

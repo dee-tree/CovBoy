@@ -1,32 +1,28 @@
 package com.microsoft.z3.coverage
 
-import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Context
-import com.microsoft.z3.Solver
+import com.sokolov.smt.prover.IProver
+import org.sosy_lab.java_smt.api.BooleanFormula
 
 class AssertionsStorage(
-    private val solver: Solver,
-    private val context: Context,
+    private val prover: IProver,
     var onAssertionChanged: ((newState: AssertionState) -> Unit)? = null,
-    vararg initial
-    : Assertion,
+    vararg initial: Assertion,
 ) {
-
     private val storage = mutableSetOf<Assertion>(*initial)
 
     val size: Int
         get() = storage.size
 
-    val assumptions: List<BoolExpr>
+    val assumptions: List<BooleanFormula>
         get() = storage.mapNotNull { if (it.enabled) it.assumption else null }
 
-    private fun assertSafely(expr: BoolExpr, isLocal: Boolean): Assertion {
-        val assertion = Assertion(expr, context, isLocal) { onAssertionChanged?.invoke(it) }
+    private fun assertSafely(expr: BooleanFormula, isLocal: Boolean): Assertion {
+        val assertion = Assertion(prover, expr, isLocal) { onAssertionChanged?.invoke(it) }
         storage.find { it.uid == assertion.uid }?.let { it.enable(); return it }
-        return assertion.put(solver).also { storage.add(it) }
+        return assertion.put(prover).also { storage.add(it) }
     }
 
-    fun assert(expr: BoolExpr, isLocal: Boolean): Assertion {
+    fun assert(expr: BooleanFormula, isLocal: Boolean): Assertion {
         return assertSafely(expr, isLocal)
     }
 

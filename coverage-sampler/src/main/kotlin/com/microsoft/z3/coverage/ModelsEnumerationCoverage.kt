@@ -1,15 +1,27 @@
 package com.microsoft.z3.coverage
 
 import com.microsoft.z3.*
-import com.sokolov.smt.sampling.logger
+import com.sokolov.smt.prover.IProver
+import com.sokolov.smt.sampler.logger
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.Model
+import org.sosy_lab.java_smt.api.SolverContext
 
-class ModelsEnumerationCoverage(solver: Solver, context: Context) : CoverageSampler(solver, context) {
+class ModelsEnumerationCoverage(
+    context: SolverContext,
+    prover: IProver,
+    coveragePredicates: Collection<BooleanFormula>
+) : CoverageSampler(context, prover, coveragePredicates) {
 
     override fun computeCoverage(
         coverModel: (Model) -> Set<AtomCoverageBase>,
-        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit
+        coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
+        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
+        modelsEnumerator.forEach {
+            coverModel(it)
+        }
+
         logger().info("Traversed ${modelsEnumerator.traversedModelsCount} models")
     }
 }

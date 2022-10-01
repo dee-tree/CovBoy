@@ -2,16 +2,23 @@ package com.microsoft.z3.coverage.intersections
 
 import com.microsoft.z3.*
 import com.microsoft.z3.coverage.*
-import com.sokolov.smt.sampling.logger
+import com.sokolov.smt.Status
+import com.sokolov.smt.isCertainBool
+import com.sokolov.smt.isNot
+import com.sokolov.smt.not
+import com.sokolov.smt.prover.IProver
+import com.sokolov.smt.sampler.logger
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.Model
+import org.sosy_lab.java_smt.api.SolverContext
 
 class ModelsIntersectionCoverage(
-    solver: Solver,
-    context: Context,
+    context: SolverContext,
+    prover: IProver,
+    coveragePredicates: Collection<BooleanFormula>,
     val intersectionSize: Int = 3,
     private val nonChangedCoverageIterationsLimit: Int = 1
-) : CoverageSampler(solver, context) {
-
-    private val atoms = solver.atoms
+) : CoverageSampler(context, prover, coveragePredicates) {
 
     private var nonChangedCoverageIterations = 0
 
@@ -21,8 +28,8 @@ class ModelsIntersectionCoverage(
 
     override fun computeCoverage(
         coverModel: (Model) -> Set<AtomCoverageBase>,
-        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit
+        coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
+        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
         do {
             if (nonChangedCoverageIterations > 0)
@@ -47,16 +54,16 @@ class ModelsIntersectionCoverage(
                     .filter { !it.isLocal && it.enabled }
                     .onEach(Assertion::disable)
 
-                val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(context)
+                val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(formulaManager.booleanFormulaManager)
 
                 assertion = customAssertionsStorage.assert(semiUncoveredAtomsAsExpr, false)
 
                 when (checkWithAssumptions(checkStatusId())) {
-                    Status.SATISFIABLE -> {
-                        val modelCoverage = coverModel(solver.model)
+                    Status.SAT -> {
+                        val modelCoverage = coverModel(prover.model)
                         coverageChanged = modelCoverage.any { it !is EmptyAtomCoverage }
                     }
-                    Status.UNSATISFIABLE -> {
+                    Status.UNSAT -> {
                         atomsWithSingleUncoveredValue
                             .map { Assignment(it.key, it.value) }
                             .forEach(onImpossibleAssignmentFound)
@@ -90,10 +97,15 @@ class ModelsIntersectionCoverage(
 
                 val intersection = currentBoundModels
                     .fold(
-                        atoms.map { it to currentBoundModels.first().eval(it, false) }.toSet()
+                        // TODO: keep in mind that eval must generate incomplete models
+                        coveragePredicates.map { it to currentBoundModels.first().eval(it) }
+                            .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
+                            .toSet()
                     ) { acc, currentModel ->
-                        acc.intersect(atoms.map { it to currentModel.eval(it, false) }.toSet())
-                    }.filter { it.second.isCertainBool }
+                        // TODO: keep in mind that eval must generate incomplete models
+                        acc.intersect(coveragePredicates.map { it to currentModel.eval(it) }
+                            .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }.toSet())
+                    }.filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
 
                 logger().trace("intersection found: $intersection")
 
@@ -104,15 +116,15 @@ class ModelsIntersectionCoverage(
                 }
                 logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
 
-                val intersectionConstraint = intersection.mergeWithAnd(context)
+                val intersectionConstraint = intersection.mergeWithAnd(formulaManager.booleanFormulaManager)
 
-                val negatedIntersection = !intersectionConstraint
+                val negatedIntersection = intersectionConstraint.not(formulaManager.booleanFormulaManager)
                 logger().trace("Add constraint on negated intersection")
                 val negIntersectionAssertion = customAssertionsStorage.assert(negatedIntersection, false)
 
                 assertion = negIntersectionAssertion
 
-                if (checkWithAssumptions(checkStatusId()) == Status.UNSATISFIABLE) {
+                if (checkWithAssumptions(checkStatusId()) == Status.UNSAT) {
                     // conflicted intersection found
                     resolveConflict(assertion, onImpossibleAssignmentFound)
                 }
@@ -132,11 +144,11 @@ class ModelsIntersectionCoverage(
      */
     private fun resolveConflict(
         assertion: Assertion,
-        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit,
+        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
     ) {
         logger().trace("Resolve conflict with $assertion")
-        val unsatCore = solver.unsatCore
-        logger().trace("UnsatCore: ${unsatCore.contentToString()}")
+        val unsatCore = unsatCoreWithAssumptions
+        logger().trace("UnsatCore: $unsatCore")
 
         val customAssertionsFromCore = customAssertionsStorage.assertions.filter { it.uidExpr in unsatCore }
 
@@ -156,7 +168,9 @@ class ModelsIntersectionCoverage(
             if (customUids.size == 1) {
                 logger().trace("Found unachievable value of atom: $assertion")
 
-                val (atom, value) = if (assertion.expr.isNot) !assertion.expr to context.mkFalse() else assertion.expr to context.mkTrue()
+                val (atom, value) = if (formulaManager.booleanFormulaManager.isNot(assertion.expr))
+                    assertion.expr.not(formulaManager.booleanFormulaManager) to formulaManager.booleanFormulaManager.makeFalse()
+                else assertion.expr to formulaManager.booleanFormulaManager.makeTrue()
                 onImpossibleAssignmentFound(Assignment(atom, value))
             }
         }
