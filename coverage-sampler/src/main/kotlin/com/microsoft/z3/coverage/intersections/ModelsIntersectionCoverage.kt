@@ -1,13 +1,14 @@
 package com.microsoft.z3.coverage.intersections
 
-import com.microsoft.z3.*
-import com.microsoft.z3.coverage.*
-import com.sokolov.smt.Status
-import com.sokolov.smt.isCertainBool
-import com.sokolov.smt.isNot
-import com.sokolov.smt.not
-import com.sokolov.smt.prover.IProver
-import com.sokolov.smt.sampler.logger
+import com.sokolov.covboy.coverage.*
+import com.sokolov.covboy.logger
+import com.sokolov.covboy.prover.Assertion
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.smt.isCertainBool
+import com.sokolov.covboy.smt.isNot
+import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Model
 import org.sosy_lab.java_smt.api.SolverContext
@@ -50,15 +51,16 @@ class ModelsIntersectionCoverage(
                     continue
                 }
 
-                val rememberedEnabledAssertions = customAssertionsStorage.assertions
-                    .filter { !it.isLocal && it.enabled }
+                val rememberedEnabledAssertions = prover
+                    .getAssertionsByTag { it.startsWith("ic.switchable") }
+                    .filter { it.enabled }
                     .onEach(Assertion::disable)
 
                 val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(formulaManager.booleanFormulaManager)
 
-                assertion = customAssertionsStorage.assert(semiUncoveredAtomsAsExpr, false)
+                assertion = prover.addConstraint(semiUncoveredAtomsAsExpr, "ic.switchable.semiuncovered")
 
-                when (checkWithAssumptions(checkStatusId())) {
+                when (prover.check(checkStatusId())) {
                     Status.SAT -> {
                         val modelCoverage = coverModel(prover.model)
                         coverageChanged = modelCoverage.any { it !is EmptyAtomCoverage }
@@ -98,12 +100,12 @@ class ModelsIntersectionCoverage(
                 val intersection = currentBoundModels
                     .fold(
                         // TODO: keep in mind that eval must generate incomplete models
-                        coveragePredicates.map { it to currentBoundModels.first().eval(it) }
+                        coveragePredicates.map { it to currentBoundModels.first().evaluate(it)?.let { formulaManager.booleanFormulaManager.makeBoolean(it) } }
                             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
                             .toSet()
                     ) { acc, currentModel ->
                         // TODO: keep in mind that eval must generate incomplete models
-                        acc.intersect(coveragePredicates.map { it to currentModel.eval(it) }
+                        acc.intersect(coveragePredicates.map { it to currentModel.evaluate(it)?.let { formulaManager.booleanFormulaManager.makeBoolean(it) } }
                             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }.toSet())
                     }.filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
 
@@ -120,11 +122,11 @@ class ModelsIntersectionCoverage(
 
                 val negatedIntersection = intersectionConstraint.not(formulaManager.booleanFormulaManager)
                 logger().trace("Add constraint on negated intersection")
-                val negIntersectionAssertion = customAssertionsStorage.assert(negatedIntersection, false)
+                val negIntersectionAssertion = prover.addConstraint(negatedIntersection, "ic.switchable.negintersection")
 
                 assertion = negIntersectionAssertion
 
-                if (checkWithAssumptions(checkStatusId()) == Status.UNSAT) {
+                if (prover.check(checkStatusId()) == Status.UNSAT) {
                     // conflicted intersection found
                     resolveConflict(assertion, onImpossibleAssignmentFound)
                 }
@@ -147,10 +149,10 @@ class ModelsIntersectionCoverage(
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
     ) {
         logger().trace("Resolve conflict with $assertion")
-        val unsatCore = unsatCoreWithAssumptions
+        val unsatCore = prover.unsatCoreWithAssumptions
         logger().trace("UnsatCore: $unsatCore")
 
-        val customAssertionsFromCore = customAssertionsStorage.assertions.filter { it.uidExpr in unsatCore }
+        val customAssertionsFromCore = prover.filterAssertions { it.uidExpr in unsatCore }
 
         val customUids = customAssertionsFromCore.map { it.uidExpr }
         val customConditions = customAssertionsFromCore.map { it.assumption }
@@ -158,7 +160,7 @@ class ModelsIntersectionCoverage(
         // if only custom assertions conflict
         if (customUids.size != 1 && unsatCore.all { it in customUids || it in customConditions }) {
             logger().info("Assertions conflict: custom assertions")
-            (customAssertionsFromCore - assertion).filter { !it.isLocal }.forEach(Assertion::disable)
+            (customAssertionsFromCore - assertion).filter { it.tag.startsWith("ic.switchable") }.forEach(Assertion::disable)
         } else {
             // conflict with original assertions branch
             logger().info("Assertions conflict: with original formula. Disable the assertion")

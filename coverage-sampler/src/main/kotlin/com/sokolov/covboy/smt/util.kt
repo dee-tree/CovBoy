@@ -1,4 +1,4 @@
-package com.sokolov.smt
+package com.sokolov.covboy.smt
 
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.visitors.BooleanFormulaVisitor

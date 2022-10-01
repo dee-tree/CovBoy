@@ -1,4 +1,4 @@
-package com.sokolov.smt
+package com.sokolov.covboy.prover
 
 enum class Status {
     SAT, UNSAT, UNKNOWN

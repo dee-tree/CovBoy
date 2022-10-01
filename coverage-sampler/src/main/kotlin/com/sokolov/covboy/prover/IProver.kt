@@ -1,6 +1,5 @@
-package com.sokolov.smt.prover
+package com.sokolov.covboy.prover
 
-import com.sokolov.smt.Status
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
@@ -28,11 +27,24 @@ interface IProver : ProverEnvironment {
 
     fun Formula.isSuitableForThisSolver(): Boolean = isSolverSuitableFormula(this)
 
+    val unsatCoreWithAssumptions: List<BooleanFormula>
+
     val constraints: List<BooleanFormula>
+
     val booleans: Set<BooleanFormula>
 
-    fun check(): Status
-    fun check(assumptions: List<BooleanFormula>): Status
+    val checksStatistics: Map<String, ChecksCounter>
+
+    val assertionsStorage: AssertionsStorage
+
+    fun addConstraint(constraint: BooleanFormula, tag: String): Assertion
+    fun getAssertionsByTag(tag: String): List<Assertion>
+    fun getAssertionsByTag(onTag: (String) -> Boolean): List<Assertion>
+    fun filterAssertions(filter: (Assertion) -> Boolean): List<Assertion>
+
+
+    fun check(reason: String = ""): Status
+    fun check(assumptions: List<BooleanFormula>, reason: String = ""): Status
 
     fun addConstraintsFromSmtLib(input: File): List<BooleanFormula>
 }

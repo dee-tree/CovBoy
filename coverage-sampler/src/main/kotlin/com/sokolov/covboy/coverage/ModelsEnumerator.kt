@@ -1,15 +1,17 @@
-package com.microsoft.z3.coverage
+package com.sokolov.covboy.coverage
 
-import com.microsoft.z3.Assignment
-import com.sokolov.smt.*
-import com.sokolov.smt.prover.IProver
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.smt.isCertainBool
+import com.sokolov.covboy.smt.isFalse
+import com.sokolov.covboy.smt.isTrue
+import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.*
 
 class ModelsEnumerator(
     private val prover: IProver,
-    private val formulaManager: FormulaManager,
-    private val assertionsStorage: AssertionsStorage,
-    private val check: () -> Status = prover::check
+    private val formulaManager: FormulaManager
 ) {
     private lateinit var current: Model
 
@@ -18,7 +20,7 @@ class ModelsEnumerator(
     var traversedModelsCount = 0
         private set
 
-    fun hasNext(): Boolean = check() == Status.SAT
+    fun hasNext(): Boolean = prover.check() == Status.SAT
 
 
     fun nextModel(onModel: (Model) -> Unit) {
@@ -33,8 +35,7 @@ class ModelsEnumerator(
             .filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
             .mergeWithAnd(formulaManager.booleanFormulaManager)
 
-        assertionsStorage.assert(currentConstraints.not(formulaManager.booleanFormulaManager), true)
-            .also { if (!it.enabled) it.enable() }
+        prover.addConstraint(currentConstraints.not(formulaManager.booleanFormulaManager), "concrete-modelneg")
         traversedModelsCount++
     }
 

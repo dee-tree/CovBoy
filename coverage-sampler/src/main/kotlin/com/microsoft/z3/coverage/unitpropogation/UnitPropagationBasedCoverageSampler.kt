@@ -1,10 +1,5 @@
 package com.microsoft.z3.coverage.unitpropogation
 
-import com.microsoft.z3.*
-import com.microsoft.z3.coverage.AtomCoverageBase
-import com.microsoft.z3.coverage.CoverageSampler
-import com.sokolov.smt.sampler.logger
-
 /*
 class UnitPropagationBasedCoverageSampler(solver: Solver, context: Context) : CoverageSampler(solver, context) {
 

@@ -1,7 +1,7 @@
-package com.microsoft.z3.coverage
+package com.sokolov.covboy.coverage
 
-import com.microsoft.z3.Assignment
-import com.sokolov.smt.isCertainBool
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.smt.isCertainBool
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.BooleanFormulaManager
 import org.sosy_lab.java_smt.api.Model

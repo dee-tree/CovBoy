@@ -1,13 +1,13 @@
-package com.microsoft.z3
+package com.sokolov.covboy.prover
 
-import com.sokolov.smt.isFalse
-import com.sokolov.smt.isTrue
-import com.sokolov.smt.not
+import com.sokolov.covboy.smt.isFalse
+import com.sokolov.covboy.smt.isTrue
+import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.FormulaManager
 
-class Assignment <T: Formula>(val expr: T, val value: T) {
+data class Assignment <T: Formula>(val expr: T, val value: T) {
 
     fun asExpr(formulaManager: FormulaManager): BooleanFormula = when {
         expr is BooleanFormula && value.isFalse(formulaManager.booleanFormulaManager) -> expr.not(formulaManager.booleanFormulaManager)
@@ -15,6 +15,6 @@ class Assignment <T: Formula>(val expr: T, val value: T) {
         else -> formulaManager.parse("(= ($expr) ($value))")
     }
 
-    override fun toString(): String = "AssignedExpr(expr = $expr, value = $value)"
+//    override fun toString(): String = "AssignedExpr(expr = $expr, value = $value)"
 }
 

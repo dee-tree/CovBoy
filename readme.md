@@ -1,0 +1,1 @@
+# *CovBoy* - Coverage based SMT-solvers tester

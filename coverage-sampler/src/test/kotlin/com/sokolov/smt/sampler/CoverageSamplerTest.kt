@@ -1,9 +1,10 @@
 package com.sokolov.smt.sampler
 
-import com.microsoft.z3.coverage.CoverageSampler
-import com.sokolov.smt.prover.IProver
-import com.sokolov.smt.prover.Prover
-import com.sokolov.smt.prover.SecondaryProver
+import com.sokolov.covboy.coverage.CoverageSampler
+import com.sokolov.covboy.logger
+import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.Prover
+import com.sokolov.covboy.prover.SecondaryProver
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -23,18 +24,20 @@ abstract class CoverageSamplerTest {
 
         val context = SolverContextFactory.createSolverContext(Solvers.Z3)
 
-        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.CVC4)
+        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.BOOLECTOR)
 
         val prover = context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
-            SolverContext.ProverOptions.GENERATE_UNSAT_CORE
+            SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
+            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
         ).let { Prover(it, context, File(inputPath)) }
 
         val cvc4Prover = cvc4Context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
-            SolverContext.ProverOptions.GENERATE_UNSAT_CORE
+            SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
+            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
         )
 
         val cvc4ProverAsSecondary = SecondaryProver(

@@ -1,7 +1,6 @@
-package com.microsoft.z3.coverage
+package com.sokolov.covboy.prover
 
-import com.sokolov.smt.implication
-import com.sokolov.smt.prover.IProver
+import com.sokolov.covboy.smt.implication
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.FormulaType
 import org.sosy_lab.java_smt.api.ProverEnvironment
@@ -9,14 +8,15 @@ import org.sosy_lab.java_smt.api.ProverEnvironment
 class Assertion(
     private val prover: IProver,
     val expr: BooleanFormula,
-    val isLocal: Boolean,
+    val tag: String = "",
+//    val isLocal: Boolean,
     var onAssertionChanged: ((AssertionState) -> Unit)? = null
 ) {
     val uid = "uid:${expr.hashCode()}"
     val uidExpr: BooleanFormula = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, uid)
 
     val assumptionName = "cond:${expr.hashCode()}"
-    val conditionExpr = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, assumptionName)
+    val conditionExpr: BooleanFormula = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, assumptionName)
 
     val assumption: BooleanFormula
         get() = conditionExpr
@@ -41,7 +41,7 @@ class Assertion(
         onAssertionChanged?.invoke(AssertionState(uid, enabled))
     }
 
-    override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expression hash = ${expr.hashCode()})"
+    override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expression hash = ${expr.hashCode()}, tag = $tag)"
 }
 
 data class AssertionState(

@@ -1,4 +1,4 @@
-package com.microsoft.z3.coverage
+package com.sokolov.covboy.coverage
 
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.BooleanFormulaManager

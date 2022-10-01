@@ -1,8 +1,10 @@
 package com.microsoft.z3.coverage
 
-import com.microsoft.z3.*
-import com.sokolov.smt.prover.IProver
-import com.sokolov.smt.sampler.logger
+import com.sokolov.covboy.coverage.AtomCoverageBase
+import com.sokolov.covboy.coverage.CoverageSampler
+import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.logger
+import com.sokolov.covboy.prover.Assignment
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Model
 import org.sosy_lab.java_smt.api.SolverContext

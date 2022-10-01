@@ -1,11 +1,5 @@
 package com.microsoft.z3.coverage.unsatcore
 
-import com.microsoft.z3.*
-import com.microsoft.z3.coverage.Assertion
-import com.microsoft.z3.coverage.AtomCoverageBase
-import com.microsoft.z3.coverage.CoverageSampler
-import com.microsoft.z3.coverage.EmptyAtomCoverage
-
 /*
 class UnsatCoreBasedCoverageSampler(solver: Solver, context: Context) : CoverageSampler(solver, context) {
 

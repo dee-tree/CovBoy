@@ -1,4 +1,4 @@
-package com.sokolov.smt.prover
+package com.sokolov.covboy.prover
 
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula

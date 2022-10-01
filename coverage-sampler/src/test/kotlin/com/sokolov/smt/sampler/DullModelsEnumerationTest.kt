@@ -1,8 +1,8 @@
 package com.sokolov.smt.sampler
 
-import com.microsoft.z3.coverage.CoverageSampler
+import com.sokolov.covboy.coverage.CoverageSampler
 import com.microsoft.z3.coverage.ModelsEnumerationCoverage
-import com.sokolov.smt.prover.IProver
+import com.sokolov.covboy.prover.IProver
 import org.sosy_lab.java_smt.api.SolverContext
 
 class DullModelsEnumerationTest : CoverageSamplerTest() {

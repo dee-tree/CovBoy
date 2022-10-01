@@ -1,4 +1,4 @@
 
-rootProject.name = "z3-cov"
+rootProject.name = "CovBoy"
 
 include("coverage-sampler")
