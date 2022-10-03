@@ -1,14 +1,13 @@
 package com.sokolov.smt.sampler
 
-import com.sokolov.covboy.coverage.CoverageSampler
 import com.microsoft.z3.coverage.ModelsEnumerationCoverage
+import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.prover.IProver
-import org.sosy_lab.java_smt.api.SolverContext
 
 class DullModelsEnumerationTest : CoverageSamplerTest() {
 
-    override fun coverageSampler(context: SolverContext, prover: IProver): CoverageSampler {
-        return ModelsEnumerationCoverage(context, prover, prover.booleans)
+    override fun coverageSampler(prover: IProver): CoverageSampler {
+        return ModelsEnumerationCoverage(prover, prover.booleans)
     }
 }
 

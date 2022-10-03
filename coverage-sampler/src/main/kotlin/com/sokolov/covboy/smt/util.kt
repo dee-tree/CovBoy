@@ -11,6 +11,11 @@ internal fun Formula.isBool(formulaManager: BooleanFormulaManager, value: Boolea
 internal fun Formula.isFalse(formulaManager: BooleanFormulaManager): Boolean = isBool(formulaManager, false)
 internal fun Formula.isTrue(formulaManager: BooleanFormulaManager): Boolean = isBool(formulaManager, true)
 
+internal fun BooleanFormula.getBooleanValue(formulaManager: BooleanFormulaManager): Boolean = when {
+    this.isTrue(formulaManager) -> true
+    this.isFalse(formulaManager) -> false
+    else -> throw IllegalArgumentException("$this is not concrete boolean value!")
+}
 
 internal fun BooleanFormula.not(bfm: BooleanFormulaManager): BooleanFormula = bfm.not(this)
 

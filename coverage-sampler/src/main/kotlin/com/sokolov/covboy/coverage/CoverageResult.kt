@@ -1,5 +1,6 @@
 package com.sokolov.covboy.coverage
 
+import com.sokolov.covboy.prover.Assignment
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.BooleanFormulaManager
 
@@ -7,7 +8,7 @@ data class CoverageResult(
     val atomsCoverage: Set<AtomCoverageBase> = emptySet(),
     val solverCheckCalls: Int = 0,
     val coverageComputationMillis: Long = 0
-) {
+) : Comparable<CoverageResult> {
 
     val coverageNumber
         get() = atomsCoverage.sumOf { it.coverageValue } / atomsCoverage.size
@@ -16,7 +17,7 @@ data class CoverageResult(
         get() = atomsCoverage.size
 
     val freeAtoms: List<AtomCoverageBase>
-        get() = atomsCoverage.filterIsInstance<NonEffectingAtomCoverage>()
+        get() = emptyList() // TODO: free atoms  //atomsCoverage.filterIsInstance<NonEffectingAtomCoverage>()
 
     val freeAtomsPortion: Double
         get() = freeAtoms.size / atomsCoverage.size.toDouble()
@@ -35,13 +36,31 @@ data class CoverageResult(
     """.trimIndent()
 
     override fun toString(): String = asStringInfo()
+
+    override fun compareTo(other: CoverageResult): Int = compareValuesBy(this, other,
+        { it.atomsCount },
+        { it.coverageNumber }
+    )
+
+    fun diff(other: CoverageResult): Set<Assignment<BooleanFormula>> {
+        if (atomsCoverage == other.atomsCoverage)
+            return emptySet()
+
+        return buildSet {
+            atomsCoverage.forEach { atomCoverage ->
+                other.atomsCoverage.find { it.expr == atomCoverage.expr }?.let { otherAtomCov ->
+                    val difference = (atomCoverage.values + otherAtomCov.values) - atomCoverage.values
+                    addAll(difference.map { Assignment(atomCoverage.expr, it) })
+                } ?: addAll(atomCoverage.values.map { Assignment(atomCoverage.expr, it) })
+            }
+        }
+    }
 }
 
 sealed class AtomCoverageBase(
     open val expr: BooleanFormula,
     open val values: Set<BooleanFormula>,
-    open val definedBySolver: Boolean // means that this atom affect the formula
-) {
+) : Comparable<AtomCoverageBase> {
     val coverageValue: Double
         get() = values.size / 2.0 // 2 - power of values (True, False)
 
@@ -51,13 +70,16 @@ sealed class AtomCoverageBase(
     val isEmpty: Boolean
         get() = values.isEmpty()
 
+    val isFull: Boolean
+        get() = values.size == 2
+
 
     fun update(newCoverage: AtomCoverageBase): AtomCoverageBase {
         require(expr == newCoverage.expr)
 
         return when {
-            this is NonEffectingAtomCoverage -> this
-            newCoverage is NonEffectingAtomCoverage -> newCoverage
+            this.isFull -> this
+            newCoverage.isFull -> newCoverage
             this is EmptyAtomCoverage -> newCoverage
             newCoverage is EmptyAtomCoverage -> this
 
@@ -68,11 +90,15 @@ sealed class AtomCoverageBase(
     fun coverNewValue(value: BooleanFormula): AtomCoverageBase =
         if (value in values) this
         else AtomCoverage(expr, values + value)
+
+    override fun compareTo(other: AtomCoverageBase): Int = if (this.expr != other.expr)
+            throw IllegalArgumentException("Unable to compare different expr coverage: $this and $other")
+    else compareValuesBy(this, other) { it.coverageValue }
 }
 
 data class EmptyAtomCoverage(
     override val expr: BooleanFormula
-) : AtomCoverageBase(expr, emptySet(), true) {
+) : AtomCoverageBase(expr, emptySet()) {
     override fun toString(): String {
         return "EmptyAtomCoverage(${expr.toShortString()})"
     }
@@ -81,23 +107,26 @@ data class EmptyAtomCoverage(
 data class AtomCoverage(
     override val expr: BooleanFormula,
     override val values: Set<BooleanFormula>,
-) : AtomCoverageBase(expr, values, true) {
+) : AtomCoverageBase(expr, values) {
 
     override fun toString(): String {
         return "AtomCoverage(expr = ${expr.toShortString()}, values = ${values})"
     }
 }
 
+fun FullCoverage(atom: BooleanFormula, formulaManager: BooleanFormulaManager): AtomCoverageBase =
+    AtomCoverage(atom, setOf(formulaManager.makeTrue(), formulaManager.makeFalse()))
+
 // Free atom coverage
-class NonEffectingAtomCoverage(atom: BooleanFormula, formulaManager: BooleanFormulaManager) : AtomCoverageBase(
-    atom,
-    setOf(formulaManager.makeTrue(), formulaManager.makeFalse()),
-    false
-) {
-    override fun toString(): String {
-        return "NonEffectingAtomCoverage(${expr.toShortString()})"
-    }
-}
+//class NonEffectingAtomCoverage(atom: BooleanFormula, formulaManager: BooleanFormulaManager) : AtomCoverageBase(
+//    atom,
+//    setOf(formulaManager.makeTrue(), formulaManager.makeFalse()),
+//    false
+//) {
+//    override fun toString(): String {
+//        return "NonEffectingAtomCoverage(${expr.toShortString()})"
+//    }
+//}
 
 private fun BooleanFormula.toShortString(): String {
     val exprRepresentation = this.toString()

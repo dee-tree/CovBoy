@@ -34,15 +34,14 @@ open class Prover(
         delegate: ProverEnvironment,
         context: SolverContext,
         formulaInputFile: File
-    ) : this(delegate, context, context.formulaManager.readFormulasFromSmtLib(formulaInputFile)) {
-        addConstraintsFromSmtLib(formulaInputFile)
-    }
+    ) : this(delegate, context, context.formulaManager.readFormulasFromSmtLib(formulaInputFile))
 
 
     override val assertionsStorage: AssertionsStorage = AssertionsStorage(this, ::onAssertionChanged)
 
+    // TODO: unsat core or unsat core over assumptions?
     override val unsatCoreWithAssumptions: List<BooleanFormula>
-        get() = unsatCoreOverAssumptions(assertionsStorage.assumptions).get()
+        get() = unsatCore //unsatCoreOverAssumptions(assertionsStorage.assumptions).get()
 
     /**
      * Add switchable constraint (with put in assertions storage)
@@ -96,6 +95,16 @@ open class Prover(
         return lastCheckStatus!!
     }
 
+    override fun push() {
+        delegate.push()
+        isCheckNeed = true
+    }
+
+    override fun pop() {
+        delegate.pop()
+        isCheckNeed = true
+    }
+
     final override fun addConstraintsFromSmtLib(input: File): List<BooleanFormula> {
         println("File: ${input.absolutePath}")
         return context.formulaManager.readFormulasFromSmtLib(input).onEach(::addConstraint).also { isCheckNeed = true }
@@ -108,6 +117,9 @@ open class Prover(
     override fun getAssertionsByTag(onTag: (String) -> Boolean): List<Assertion> = assertionsStorage.getByTag(onTag)
     override fun getAssertionsByTag(tag: String): List<Assertion> = assertionsStorage.getByTag(tag)
 
+    override fun toString(): String {
+        return "Prover($solver)"
+    }
 }
 
 // line-based content

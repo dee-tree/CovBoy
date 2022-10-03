@@ -1,22 +1,22 @@
 package com.sokolov.covboy.coverage
 
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.*
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.Status
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.Model
-import org.sosy_lab.java_smt.api.SolverContext
 import kotlin.system.measureTimeMillis
 
 abstract class CoverageSampler(
-    protected val context: SolverContext,
     protected val prover: IProver,
     coveragePredicates: Collection<BooleanFormula>
 ) {
 
     protected val coveragePredicates: Set<BooleanFormula> = coveragePredicates.toSet()
 
-    protected val formulaManager: FormulaManager = context.formulaManager
+    protected val formulaManager: FormulaManager = prover.context.formulaManager
 
     private val coverageEvaluator = CoverageEvaluator(this.coveragePredicates, formulaManager.booleanFormulaManager)
 

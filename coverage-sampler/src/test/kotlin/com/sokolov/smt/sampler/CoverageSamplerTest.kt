@@ -24,7 +24,7 @@ abstract class CoverageSamplerTest {
 
         val context = SolverContextFactory.createSolverContext(Solvers.Z3)
 
-        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.BOOLECTOR)
+        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.YICES2)
 
         val prover = context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
@@ -49,7 +49,7 @@ abstract class CoverageSamplerTest {
 
 
 //        val coverage = coverageSampler(context, prover).computeCoverage()
-        val coverage = coverageSampler(cvc4Context, cvc4ProverAsSecondary).computeCoverage()
+        val coverage = coverageSampler(cvc4ProverAsSecondary).computeCoverage()
         println("coverage value for $inputPath: ${coverage.coverageNumber}")
         logger().debug("coverage.solverCheckCalls: ${coverage.solverCheckCalls}")
         logger().debug("Atoms count: ${coverage.atomsCount} (free: ${coverage.freeAtoms.size})")
@@ -59,7 +59,7 @@ abstract class CoverageSamplerTest {
 
     }
 
-    abstract fun coverageSampler(context: SolverContext, prover: IProver): CoverageSampler
+    abstract fun coverageSampler(prover: IProver): CoverageSampler
 
 
     companion object {

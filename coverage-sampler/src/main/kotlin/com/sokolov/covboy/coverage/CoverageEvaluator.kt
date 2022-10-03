@@ -65,7 +65,7 @@ class CoverageEvaluator(
             return if (uncoveredValues[atom]?.isNotEmpty() == true) {
                 // in case of atom is free (not important atom)
                 removeFromUncovered(atom)
-                NonEffectingAtomCoverage(atom, formulaManager)
+                FullCoverage(atom, formulaManager)
             } else {
                 EmptyAtomCoverage(atom)
             }

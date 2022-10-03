@@ -11,15 +11,13 @@ import com.sokolov.covboy.smt.isNot
 import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Model
-import org.sosy_lab.java_smt.api.SolverContext
 
 class ModelsIntersectionCoverage(
-    context: SolverContext,
     prover: IProver,
     coveragePredicates: Collection<BooleanFormula>,
     val intersectionSize: Int = 3,
     private val nonChangedCoverageIterationsLimit: Int = 1
-) : CoverageSampler(context, prover, coveragePredicates) {
+) : CoverageSampler(prover, coveragePredicates) {
 
     private var nonChangedCoverageIterations = 0
 
@@ -32,6 +30,7 @@ class ModelsIntersectionCoverage(
         coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
+        prover.push()
         do {
             if (nonChangedCoverageIterations > 0)
                 logger().trace("Non-changed coverage iterations: $nonChangedCoverageIterations")
@@ -134,6 +133,8 @@ class ModelsIntersectionCoverage(
 
             if (coverageChanged) nonChangedCoverageIterations = 0 else nonChangedCoverageIterations++
         } while (!isCovered)
+
+        prover.pop()
 
         logger().info("Traversed ${modelsEnumerator.traversedModelsCount} models")
         logger().info("Useful models coverage from intersection: $usefulIntersectionModelsCoverage models")

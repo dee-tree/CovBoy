@@ -3,7 +3,6 @@ package com.sokolov.smt.sampler
 import com.microsoft.z3.coverage.intersections.ModelsIntersectionCoverage
 import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.prover.IProver
-import org.sosy_lab.java_smt.api.SolverContext
 
 // TODO: ModelsEnumerationOnIntersectionsTest
 /*class ModelsEnumerationOnIntersectionsTest : CoverageSamplerAgainstDullEnumerationTest() {
@@ -20,9 +19,8 @@ import org.sosy_lab.java_smt.api.SolverContext
 
 class ModelsEnumerationOnIntersectionsTest : CoverageSamplerTest() {
 
-    override fun coverageSampler(context: SolverContext, prover: IProver): CoverageSampler {
+    override fun coverageSampler(prover: IProver): CoverageSampler {
         return ModelsIntersectionCoverage(
-            context,
             prover,
             prover.booleans,
             2
