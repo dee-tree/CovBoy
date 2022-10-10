@@ -3,6 +3,8 @@ package com.sokolov.covboy.coverage
 import com.sokolov.covboy.prover.Assignment
 import com.sokolov.covboy.prover.IProver
 import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
+import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isCertainBool
 import com.sokolov.covboy.smt.isFalse
 import com.sokolov.covboy.smt.isTrue
@@ -14,6 +16,7 @@ class ModelsEnumerator(
     private val formulaManager: FormulaManager
 ) {
     private lateinit var current: Model
+    private lateinit var currentModel: ModelAssignments<*>
 
     private val predicates = prover.booleans
 
@@ -23,41 +26,40 @@ class ModelsEnumerator(
     fun hasNext(): Boolean = prover.check() == Status.SAT
 
 
-    fun nextModel(onModel: (Model) -> Unit) {
+    fun nextModel(exprs: Collection<BooleanFormula>, onModel: (ModelAssignments<BooleanFormula>) -> Unit) {
         current = prover.model
 
-        onModel(current)
+        currentModel = BoolModelAssignmentsImpl(current, exprs, prover)
 
         // get incomplete models to avoid "unknown"/"undefined" predicates
         val currentConstraints = predicates
-            .map { it to current.evaluate(it) } // TODO: keep in mind that model's eval must be incomplete producer
-            .mapNotNull { if (it.second == null) null else Assignment(it.first, formulaManager.booleanFormulaManager.makeBoolean(it.second!!)) }
+            .map { it to (currentModel as BoolModelAssignmentsImpl).evaluate(it) } // TODO: keep in mind that model's eval must be incomplete producer
+            .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
             .filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
             .mergeWithAnd(formulaManager.booleanFormulaManager)
+
+        onModel(currentModel as BoolModelAssignmentsImpl)
 
         prover.addConstraint(currentConstraints.not(formulaManager.booleanFormulaManager), "concrete-modelneg")
         traversedModelsCount++
     }
 
-    fun take(count: Int): List<Model> = buildList {
+    fun take(exprs: Collection<BooleanFormula>, count: Int): List<ModelAssignments<BooleanFormula>> = buildList {
         if (count < 1) return@buildList
 
         repeat(count) {
             if (!hasNext())
                 return@buildList
-            nextModel { add(it) }
+            nextModel(exprs) { add(it) }
         }
     }
 
-    fun all(): List<Model> = buildList {
+
+    fun forEach(exprs: Collection<BooleanFormula>, action: (ModelAssignments<BooleanFormula>) -> Unit) {
         while (hasNext())
-            nextModel { add(it) }
+            nextModel(exprs, action)
     }
 
-    fun forEach(action: (Model) -> Unit) {
-        while (hasNext())
-            nextModel(action)
-    }
 }
 
 internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWith(

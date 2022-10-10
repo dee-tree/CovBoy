@@ -1,10 +1,10 @@
 package com.sokolov.covboy.coverage
 
 import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isCertainBool
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.BooleanFormulaManager
-import org.sosy_lab.java_smt.api.Model
 
 class CoverageEvaluator(
     private val coveragePredicates: Set<BooleanFormula>,
@@ -32,15 +32,14 @@ class CoverageEvaluator(
     /**
      * @return covered by this call atoms with their values
      */
-    fun cover(model: Model): Set<AtomCoverageBase> {
+    fun cover(model: ModelAssignments<BooleanFormula>): Set<AtomCoverageBase> {
         val thisModelCoverage = mutableSetOf<AtomCoverageBase>()
 
         var covered = 0
         var uncovered = 0
 
         coveragePredicates.forEach { boolExpr ->
-            //TODO here must be incomplete model eval
-            val atomValue = model.evaluate(boolExpr)?.let { formulaManager.makeBoolean(it) } ?: boolExpr
+            val atomValue = model.evaluate(boolExpr) ?: boolExpr
             val coveredThisAtom = coverAtom(boolExpr, atomValue)
             if (coveredThisAtom !is EmptyAtomCoverage) covered++ else uncovered++
 

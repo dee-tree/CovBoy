@@ -14,6 +14,8 @@ import org.sosy_lab.java_smt.api.*
 import java.io.File
 import java.util.stream.Stream
 
+
+@Deprecated("use ")
 abstract class CoverageSamplerTest {
 
     @ParameterizedTest
@@ -24,20 +26,20 @@ abstract class CoverageSamplerTest {
 
         val context = SolverContextFactory.createSolverContext(Solvers.Z3)
 
-        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.YICES2)
+        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.CVC4)
 
         val prover = context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
+//            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
         ).let { Prover(it, context, File(inputPath)) }
 
         val cvc4Prover = cvc4Context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
+//            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
         )
 
         val cvc4ProverAsSecondary = SecondaryProver(
@@ -48,8 +50,7 @@ abstract class CoverageSamplerTest {
         )
 
 
-//        val coverage = coverageSampler(context, prover).computeCoverage()
-        val coverage = coverageSampler(cvc4ProverAsSecondary).computeCoverage()
+        val coverage = coverageSampler(prover).computeCoverage()
         println("coverage value for $inputPath: ${coverage.coverageNumber}")
         logger().debug("coverage.solverCheckCalls: ${coverage.solverCheckCalls}")
         logger().debug("Atoms count: ${coverage.atomsCount} (free: ${coverage.freeAtoms.size})")
@@ -65,7 +66,7 @@ abstract class CoverageSamplerTest {
     companion object {
         @JvmStatic
         fun provideSmtInputPaths(): Stream<Arguments> =
-            Stream.of(*(File("input").listFiles { file: File -> file.isFile && "simple" in file.name }?.map { Arguments.of(it.absolutePath) }
+            Stream.of(*(File("input").listFiles { file: File -> file.isFile && "bug-15" in file.name }?.map { Arguments.of(it.absolutePath) }
                 ?: emptyList()).toTypedArray())
     }
 

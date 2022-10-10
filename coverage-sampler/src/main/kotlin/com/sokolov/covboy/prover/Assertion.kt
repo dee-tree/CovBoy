@@ -9,7 +9,6 @@ class Assertion(
     private val prover: IProver,
     val expr: BooleanFormula,
     val tag: String = "",
-//    val isLocal: Boolean,
     var onAssertionChanged: ((AssertionState) -> Unit)? = null
 ) {
     val uid = "uid:${expr.hashCode()}"

@@ -39,7 +39,7 @@ val z3Version = "4.10.1"
 val smtInterpolVersion = "2.5-916-ga5843d8b"
 val boolectorVersion = "3.2.2-g1a89c229"
 val cvc4Version = "1.8-prerelease-2020-06-24-g7825d8f28"
-val mathsat5Version = "5.6.8"
+val mathsat5Version = "5.6.6-sosy1" //"5.6.8"
 val optiMathsat5Version = "1.7.1-sosy0"
 val yices2Version = "2.6.2-396-g194350c1"
 val princessVersion = "2021-11-15"
@@ -83,6 +83,8 @@ dependencies {
     implementation("org.slf4j:slf4j-api:1.7.32")
     implementation("ch.qos.logback:logback-classic:1.2.11")
     implementation("ch.qos.logback:logback-core:1.2.11")
+
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
 
     implementation(fileTree("dir" to "build/dependencies", "include" to "*.jar"))
 

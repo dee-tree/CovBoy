@@ -5,6 +5,7 @@ import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.logger
 import com.sokolov.covboy.prover.Assignment
 import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.model.ModelAssignments
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Model
 
@@ -14,12 +15,12 @@ class ModelsEnumerationCoverage(
 ) : CoverageSampler(prover, coveragePredicates) {
 
     override fun computeCoverage(
-        coverModel: (Model) -> Set<AtomCoverageBase>,
+        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
         coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
         prover.push()
-        modelsEnumerator.forEach {
+        modelsEnumerator.forEach(coveragePredicates) {
             coverModel(it)
         }
         prover.pop()

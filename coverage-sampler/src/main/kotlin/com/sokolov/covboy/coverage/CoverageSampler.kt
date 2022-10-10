@@ -4,9 +4,9 @@ import com.sokolov.covboy.logger
 import com.sokolov.covboy.prover.Assignment
 import com.sokolov.covboy.prover.IProver
 import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.prover.model.ModelAssignments
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.FormulaManager
-import org.sosy_lab.java_smt.api.Model
 import kotlin.system.measureTimeMillis
 
 abstract class CoverageSampler(
@@ -25,7 +25,7 @@ abstract class CoverageSampler(
     protected val modelsEnumerator = ModelsEnumerator(prover, formulaManager)
 
     protected abstract fun computeCoverage(
-        coverModel: (Model) -> Set<AtomCoverageBase>,
+        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
         coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
     )
@@ -54,7 +54,7 @@ abstract class CoverageSampler(
     protected val firstSemiCoveredAtom: Assignment<BooleanFormula>?
         get() = coverageEvaluator.firstSemiCoveredAtom()
 
-    private fun cover(model: Model): Set<AtomCoverageBase> {
+    private fun cover(model: ModelAssignments<BooleanFormula>): Set<AtomCoverageBase> {
         val modelCoverage: Set<AtomCoverageBase>
 
         val modelCoverageMillis = measureTimeMillis {
@@ -88,6 +88,9 @@ abstract class CoverageSampler(
             atomCoverage = coverageEvaluator.excludeFromCoverageArea(assignment)
         }
     }
+
+    protected fun ModelsEnumerator.take(count: Int): List<ModelAssignments<BooleanFormula>> =
+        this.take(coveragePredicates, count)
 
 }
 

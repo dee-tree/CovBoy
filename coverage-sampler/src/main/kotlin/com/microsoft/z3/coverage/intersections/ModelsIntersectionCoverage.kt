@@ -6,11 +6,12 @@ import com.sokolov.covboy.prover.Assertion
 import com.sokolov.covboy.prover.Assignment
 import com.sokolov.covboy.prover.IProver
 import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
+import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isCertainBool
 import com.sokolov.covboy.smt.isNot
 import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.BooleanFormula
-import org.sosy_lab.java_smt.api.Model
 
 class ModelsIntersectionCoverage(
     prover: IProver,
@@ -26,7 +27,8 @@ class ModelsIntersectionCoverage(
 
 
     override fun computeCoverage(
-        coverModel: (Model) -> Set<AtomCoverageBase>,
+//        coverModel: (Model) -> Set<AtomCoverageBase>,
+        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
         coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
@@ -61,7 +63,7 @@ class ModelsIntersectionCoverage(
 
                 when (prover.check(checkStatusId())) {
                     Status.SAT -> {
-                        val modelCoverage = coverModel(prover.model)
+                        val modelCoverage = coverModel(BoolModelAssignmentsImpl(prover.model, coveragePredicates, prover))
                         coverageChanged = modelCoverage.any { it !is EmptyAtomCoverage }
                     }
                     Status.UNSAT -> {
@@ -99,12 +101,12 @@ class ModelsIntersectionCoverage(
                 val intersection = currentBoundModels
                     .fold(
                         // TODO: keep in mind that eval must generate incomplete models
-                        coveragePredicates.map { it to currentBoundModels.first().evaluate(it)?.let { formulaManager.booleanFormulaManager.makeBoolean(it) } }
+                        coveragePredicates.map { it to currentBoundModels.first().evaluate(it) }
                             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
                             .toSet()
                     ) { acc, currentModel ->
                         // TODO: keep in mind that eval must generate incomplete models
-                        acc.intersect(coveragePredicates.map { it to currentModel.evaluate(it)?.let { formulaManager.booleanFormulaManager.makeBoolean(it) } }
+                        acc.intersect(coveragePredicates.map { it to currentModel.evaluate(it) }
                             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }.toSet())
                     }.filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
 

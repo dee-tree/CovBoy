@@ -23,13 +23,16 @@ class SecondaryProver(
         SolverContext.ProverOptions.GENERATE_MODELS,
         SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
         SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-//        SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS // TODO: do we need unsat core over assumptions?
     ), context, z3Formulas, z3Prover)
 
     /**
      * mapper of master's formula to this solver formula
      */
     private val mapper = mutableMapOf<Formula, Formula>()
+
+    fun getFromMapper(filter: (Formula) -> Boolean) : Formula {
+        return mapper.entries.first { filter(it.key) }.value
+    }
 
     init {
         z3Formulas.map { mapper.getOrPut(it) { it.z3FormulaTransform(z3Prover.context, context.formulaManager) } }
