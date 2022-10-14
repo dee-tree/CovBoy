@@ -1,13 +1,13 @@
 package com.sokolov.covboy.solvers
 
-import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.BaseProverEnvironment
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.visitors.FormulaVisitor
 
 /*
 Source: org.sosy_lab.java_smt.example.FormulaClassifier => Classifier
  */
-class TheoriesClassifier(private val prover: IProver) : FormulaVisitor<Int> {
+class TheoriesClassifier(private val prover: BaseProverEnvironment) : FormulaVisitor<Int> {
 
     private var hasUFs = false
     private var hasQuantifiers = false
@@ -81,13 +81,13 @@ class TheoriesClassifier(private val prover: IProver) : FormulaVisitor<Int> {
 
         if (
             (declaration.kind == FunctionDeclarationKind.MUL
-            || declaration.kind == FunctionDeclarationKind.BV_MUL
-            || declaration.kind == FunctionDeclarationKind.DIV
-            || declaration.kind == FunctionDeclarationKind.BV_UDIV
-            || declaration.kind == FunctionDeclarationKind.BV_SDIV
-            || declaration.kind == FunctionDeclarationKind.MODULO
-            || declaration.kind == FunctionDeclarationKind.BV_UREM
-            || declaration.kind == FunctionDeclarationKind.BV_SREM)
+                    || declaration.kind == FunctionDeclarationKind.BV_MUL
+                    || declaration.kind == FunctionDeclarationKind.DIV
+                    || declaration.kind == FunctionDeclarationKind.BV_UDIV
+                    || declaration.kind == FunctionDeclarationKind.BV_SDIV
+                    || declaration.kind == FunctionDeclarationKind.MODULO
+                    || declaration.kind == FunctionDeclarationKind.BV_UREM
+                    || declaration.kind == FunctionDeclarationKind.BV_SREM)
             && numNonConstantArgs >= 2
         ) {
             nonLinearArithmetic = true
@@ -126,8 +126,7 @@ class TheoriesClassifier(private val prover: IProver) : FormulaVisitor<Int> {
         f.checkType()
         return prover.context.formulaManager.visit(body, this)
     }
-    
-    
+
     private fun toTheoriesSet(): Set<Theories> = buildSet {
         if (hasUFs) add(Theories.UF)
         if (hasQuantifiers) add(Theories.QUANTIFIER)
@@ -140,4 +139,4 @@ class TheoriesClassifier(private val prover: IProver) : FormulaVisitor<Int> {
     }
 }
 
-fun IProver.theories(): Set<Theories> = TheoriesClassifier(this).process()
+fun BaseProverEnvironment.theories(): Set<Theories> = TheoriesClassifier(this).process()

@@ -2,7 +2,7 @@ package com.sokolov.covboy.coverage
 
 import com.sokolov.covboy.logger
 import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Status
 import com.sokolov.covboy.prover.model.ModelAssignments
 import org.sosy_lab.java_smt.api.BooleanFormula
@@ -10,7 +10,7 @@ import org.sosy_lab.java_smt.api.FormulaManager
 import kotlin.system.measureTimeMillis
 
 abstract class CoverageSampler(
-    protected val prover: IProver,
+    protected val prover: BaseProverEnvironment,
     coveragePredicates: Collection<BooleanFormula>
 ) {
 
@@ -38,7 +38,7 @@ abstract class CoverageSampler(
 
         computeCoverage(::cover, ::coverAtom, ::onImpossibleAssignmentFound)
         println(coverageResult)
-        logger().debug("Checks statistics: ${prover.checksStatistics}")
+        logger().debug("Checks statistics: ${prover.checkCounter}")
         return coverageResult
     }
 

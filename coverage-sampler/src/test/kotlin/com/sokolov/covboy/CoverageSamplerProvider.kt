@@ -1,8 +1,8 @@
 package com.sokolov.covboy
 
 import com.sokolov.covboy.coverage.CoverageSampler
-import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.BaseProverEnvironment
 
 abstract class CoverageSamplerProvider {
-    abstract operator fun invoke(prover: IProver): CoverageSampler
+    abstract operator fun invoke(prover: BaseProverEnvironment): CoverageSampler
 }

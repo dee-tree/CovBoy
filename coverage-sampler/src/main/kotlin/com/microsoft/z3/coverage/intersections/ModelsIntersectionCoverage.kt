@@ -2,10 +2,7 @@ package com.microsoft.z3.coverage.intersections
 
 import com.sokolov.covboy.coverage.*
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.Assertion
-import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.IProver
-import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.prover.*
 import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
 import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isCertainBool
@@ -14,7 +11,7 @@ import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.BooleanFormula
 
 class ModelsIntersectionCoverage(
-    prover: IProver,
+    prover: BaseProverEnvironment,
     coveragePredicates: Collection<BooleanFormula>,
     val intersectionSize: Int = 3,
     private val nonChangedCoverageIterationsLimit: Int = 1
@@ -52,8 +49,7 @@ class ModelsIntersectionCoverage(
                 }
 
                 val rememberedEnabledAssertions = prover
-                    .getAssertionsByTag { it.startsWith("ic.switchable") }
-                    .filter { it.enabled }
+                    .assertions.filter { it.enabled && it.tag.startsWith("ic.switchable") }
                     .onEach(Assertion::disable)
 
                 val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(formulaManager.booleanFormulaManager)
@@ -146,7 +142,7 @@ class ModelsIntersectionCoverage(
         logger().trace("Resolve conflict")
         val unsatCore = prover.unsatCoreWithAssumptions
 
-        val customAssertionsFromCore = prover.filterAssertions { it.uidExpr in unsatCore }
+        val customAssertionsFromCore = prover.assertions.filter { it.uidExpr in unsatCore }
 
         val customUids = customAssertionsFromCore.map { it.uidExpr }
         val customConditions = customAssertionsFromCore.map { it.assumption }

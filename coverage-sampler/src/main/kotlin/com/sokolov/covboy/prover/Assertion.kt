@@ -1,21 +1,23 @@
 package com.sokolov.covboy.prover
 
+import com.sokolov.covboy.prover.assertions.AssertionListener
 import com.sokolov.covboy.smt.implication
 import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.FormulaType
 import org.sosy_lab.java_smt.api.ProverEnvironment
 
 class Assertion(
-    private val prover: IProver,
+    fm: FormulaManager,
     val expr: BooleanFormula,
     val tag: String = "",
-    var onAssertionChanged: ((AssertionState) -> Unit)? = null
+    var assertionListener: AssertionListener? = null
 ) {
     val uid = "uid:${expr.hashCode()}"
-    val uidExpr: BooleanFormula = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, uid)
+    val uidExpr: BooleanFormula = fm.makeVariable(FormulaType.BooleanType, uid)
 
     val assumptionName = "cond:${expr.hashCode()}"
-    val conditionExpr: BooleanFormula = prover.context.formulaManager.makeVariable(FormulaType.BooleanType, assumptionName)
+    val conditionExpr: BooleanFormula = fm.makeVariable(FormulaType.BooleanType, assumptionName)
 
     val assumption: BooleanFormula
         get() = conditionExpr
@@ -23,21 +25,21 @@ class Assertion(
     var enabled = true
         private set
 
-    private val asFormula = prover.context.formulaManager.implication(assumption, expr)
+    private val asFormula = fm.implication(assumption, expr)
 
     fun put(prover: ProverEnvironment): Assertion = apply {
         prover.addConstraint(asFormula)
-        onAssertionChanged?.invoke(AssertionState(uid, enabled))
+        assertionListener?.onAssertionEnabled(this)
     }
 
     fun disable() {
         enabled = false
-        onAssertionChanged?.invoke(AssertionState(uid, enabled))
+        assertionListener?.onAssertionDisabled(this)
     }
 
     fun enable() {
         enabled = true
-        onAssertionChanged?.invoke(AssertionState(uid, enabled))
+        assertionListener?.onAssertionEnabled(this)
     }
 
     override fun toString(): String = "AssertionInfo(uid = $uid, enabled = $enabled, expression hash = ${expr.hashCode()}, tag = $tag)"

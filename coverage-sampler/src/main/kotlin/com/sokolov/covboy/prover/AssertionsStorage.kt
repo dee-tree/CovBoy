@@ -1,10 +1,14 @@
 package com.sokolov.covboy.prover
 
+import com.sokolov.covboy.prover.assertions.AssertionListener
 import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.FormulaManager
+import org.sosy_lab.java_smt.api.ProverEnvironment
 
 class AssertionsStorage(
-    private val prover: IProver,
-    var onAssertionChanged: ((newState: AssertionState) -> Unit)? = null,
+    private val prover: ProverEnvironment,
+    private val fm: FormulaManager,
+    var assertionListener: AssertionListener? = null,
     vararg initial: Assertion,
 ) {
     private val storage = mutableSetOf<Assertion>(*initial)
@@ -16,7 +20,11 @@ class AssertionsStorage(
         get() = storage.mapNotNull { if (it.enabled) it.assumption else null }
 
     private fun assertSafely(expr: BooleanFormula, tag: String): Assertion {
-        val assertion = Assertion(prover, expr, tag) { onAssertionChanged?.invoke(it) }
+        val assertion = Assertion(fm, expr, tag, object : AssertionListener {
+            override fun onAssertionEnabled(assertion: Assertion) { assertionListener?.onAssertionEnabled(assertion) }
+            override fun onAssertionDisabled(assertion: Assertion) { assertionListener?.onAssertionDisabled(assertion) }
+        })
+
         storage.find { it.uid == assertion.uid }?.let { it.enable(); return it }
         return assertion.put(prover).also { storage.add(it) }
     }
@@ -29,10 +37,9 @@ class AssertionsStorage(
         storage.forEach(action)
     }
 
-    val assertions: Collection<Assertion>
+    val assertions: Set<Assertion>
         get() = storage
 
-//    operator fun get(uid: String): Assertion = storage.first { it.uid == uid }
     fun getById(uid: String): Assertion = storage.first { it.uid == uid }
     fun getByTag(tag: String): List<Assertion> = storage.filter { it.tag == tag }
     fun getByTag(onTag: (String) -> Boolean): List<Assertion> = storage.filter { onTag(it.tag) }

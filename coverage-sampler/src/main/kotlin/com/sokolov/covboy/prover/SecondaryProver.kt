@@ -12,19 +12,24 @@ import org.sosy_lab.java_smt.api.SolverContext
 import org.sosy_lab.java_smt.solvers.z3.z3FormulaTransform
 
 
-class SecondaryProver(
+open class SecondaryProver(
     private val delegate: ProverEnvironment,
     context: SolverContext,
-    z3Formulas: Collection<BooleanFormula>,
-    private val z3Prover: IProver,
+    private val z3Prover: BaseProverEnvironment,
     private val shutdownManager: ShutdownManager
-) : Prover(delegate, context, shutdownManager, z3Formulas.map { it.z3FormulaTransform(z3Prover.context, context.formulaManager) }) {
+) : Prover(delegate, context, shutdownManager, z3Prover.constraints.map { it.z3FormulaTransform(z3Prover.context, context.formulaManager) }) {
 
-    constructor(context: SolverContext, z3Formulas: Collection<BooleanFormula>, z3Prover: IProver, shutdownManager: ShutdownManager) : this(context.newProverEnvironment(
-        SolverContext.ProverOptions.GENERATE_MODELS,
-        SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
-        SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-    ), context, z3Formulas, z3Prover, shutdownManager)
+    constructor(
+        context: SolverContext,
+        z3Prover: BaseProverEnvironment,
+        shutdownManager: ShutdownManager
+    ) : this(
+        context.newProverEnvironment(
+            SolverContext.ProverOptions.GENERATE_MODELS,
+            SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
+            SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
+        ), context, z3Prover, shutdownManager
+    )
 
     /**
      * mapper of master's formula to this solver formula
@@ -36,7 +41,7 @@ class SecondaryProver(
     }
 
     init {
-        z3Formulas.map { mapper.getOrPut(it) { it.z3FormulaTransform(z3Prover.context, context.formulaManager) } }
+        z3Prover.constraints.map { mapper.getOrPut(it) { it.z3FormulaTransform(z3Prover.context, context.formulaManager) } }
     }
 
     override val booleans: Set<BooleanFormula>
@@ -63,6 +68,6 @@ class SecondaryProver(
     )
 
     override fun toString(): String {
-        return "SecondaryProver($solver from ${z3Prover.solver})"
+        return "SecondaryProver($solverName from ${z3Prover.solverName})"
     }
 }

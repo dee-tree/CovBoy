@@ -1,5 +1,6 @@
 package org.sosy_lab.java_smt.solvers.boolector
 
+import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Prover
 import com.sokolov.covboy.prover.SecondaryProver
 import org.sosy_lab.java_smt.api.BooleanFormula
@@ -39,6 +40,26 @@ private fun ProverEnvironment.boolectorFormulaCreator(): BoolectorFormulaCreator
     creatorField.isAccessible = true
 
     return creatorField.get(proverEnv) as BoolectorFormulaCreator
+}
+
+fun BaseProverEnvironment.boolectorUnsatCoreWithAssumptions(): List<BooleanFormula> {
+    val f = Unsafe::class.java.getDeclaredField("theUnsafe")
+    f.isAccessible = true
+    val unsafe = f.get(null) as Unsafe
+
+    return buildList {
+        var currentPointer = BtorJNI.boolector_get_failed_assumptions(btor())
+        var nodePointer = unsafe.getLong(currentPointer);
+
+        while (nodePointer != 0L) {
+            add(boolectorFormulaCreator().encapsulateBoolean(nodePointer))
+
+            currentPointer += 8 // Next item of array
+            nodePointer = unsafe.getLong(currentPointer)
+        }
+
+    }
+
 }
 
 

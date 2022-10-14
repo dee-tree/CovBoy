@@ -1,6 +1,7 @@
 package com.sokolov.covboy.prover
 
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -19,6 +20,10 @@ fun <T> withTimeout(timeoutMillis: Long, action: () -> T, onTimeout: () -> T): T
     return try {
         future.get()
     } catch (e: CancellationException) {
-        cancellation.get()
+        try {
+            cancellation.get()
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
     }
 }

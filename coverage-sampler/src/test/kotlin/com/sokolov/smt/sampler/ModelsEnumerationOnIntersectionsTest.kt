@@ -2,24 +2,12 @@ package com.sokolov.smt.sampler
 
 import com.microsoft.z3.coverage.intersections.ModelsIntersectionCoverage
 import com.sokolov.covboy.coverage.CoverageSampler
-import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.BaseProverEnvironment
 
-// TODO: ModelsEnumerationOnIntersectionsTest
-/*class ModelsEnumerationOnIntersectionsTest : CoverageSamplerAgainstDullEnumerationTest() {
-
-    override fun coverageSampler(context: SolverContext, formulas: List<BooleanFormula>): CoverageSampler {
-        return ModelsIntersectionCoverage(
-            context = context,
-            formulas = formulas,
-            intersectionSize = 3,
-            nonChangedCoverageIterationsLimit = 1
-        )
-    }
-}*/
 
 class ModelsEnumerationOnIntersectionsTest : CoverageSamplerTest() {
 
-    override fun coverageSampler(prover: IProver): CoverageSampler {
+    override fun coverageSampler(prover: BaseProverEnvironment): CoverageSampler {
         return ModelsIntersectionCoverage(
             prover,
             prover.booleans,

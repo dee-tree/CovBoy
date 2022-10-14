@@ -2,7 +2,7 @@ package com.sokolov.smt.sampler
 
 import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Prover
 import com.sokolov.covboy.prover.SecondaryProver
 import org.junit.jupiter.params.ParameterizedTest
@@ -53,7 +53,7 @@ abstract class CoverageSamplerTest {
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-        ).let { SecondaryProver(context, primaryProver.constraints, primaryProver, shutdownManager) }
+        ).let { SecondaryProver(context, primaryProver, shutdownManager) }
 
         val coverage = coverageSampler(prover).computeCoverage()
         println("coverage value for $inputPath: ${coverage.coverageNumber}")
@@ -65,7 +65,7 @@ abstract class CoverageSamplerTest {
 
     }
 
-    abstract fun coverageSampler(prover: IProver): CoverageSampler
+    abstract fun coverageSampler(prover: BaseProverEnvironment): CoverageSampler
 
 
     companion object {

@@ -1,7 +1,7 @@
 package com.sokolov.covboy.prover.model
 
 import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.IProver
+import com.sokolov.covboy.prover.BaseProverEnvironment
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.Model
@@ -16,7 +16,7 @@ abstract class AbstractModelAssignments<T : Formula> private constructor(
     constructor(model: Model) : this(model.map { Assignment(it.key, it.valueAsFormula) }) {
     }
 
-    constructor(model: Model, expressions: Collection<T>, prover: IProver) : this(expressions.mapNotNull {
+    constructor(model: Model, expressions: Collection<T>, prover: BaseProverEnvironment) : this(expressions.mapNotNull {
         try { model.evaluate(it)
         } catch (e: Exception) {
             null
