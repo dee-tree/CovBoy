@@ -10,6 +10,9 @@ import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
+import org.sosy_lab.common.ShutdownManager
+import org.sosy_lab.common.configuration.Configuration
+import org.sosy_lab.common.log.LogManager
 import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.SolverContext
@@ -56,14 +59,14 @@ abstract class CoverageEstimatorTest {
     companion object {
 
         fun getInputs(): List<File> = File("input")
-            .listFiles { file: File -> file.isFile }
+            .listFiles { file: File -> file.isFile && "bug2-15" in file.name }
             ?.map { it } ?: emptyList()
 
         val excludedSolvers = listOf<Solvers>(
             Solvers.MATHSAT5, // not installed
             Solvers.PRINCESS, // does not support unsat core with assumptions
-            //Solvers.SMTINTERPOL,
-            //Solvers.YICES2, // invalid models on boolean_simple
+            Solvers.SMTINTERPOL,
+            Solvers.YICES2, // invalid models on boolean_simple
 //        SolverContextFactory.Solvers.BOOLECTOR, // crash on intersections boolean_simple (boolector_bv_assignment: cannot retrieve model if input formula is not SAT)
             //Solvers.CVC4
         )
@@ -94,19 +97,32 @@ fun checkCompatibility(origin: Solvers, other: Solvers, input: File) {
 }
 
 fun makeOriginProver(solver: Solvers, input: File): IProver {
-    val ctx = SolverContextFactory.createSolverContext(solver)
+    val shutdownManager = ShutdownManager.create()
+    val ctx = SolverContextFactory.createSolverContext(
+        Configuration.defaultConfiguration(),
+        LogManager.createNullLogManager(),
+        shutdownManager.notifier, solver
+    )
     val proverEnv = ctx.newProverEnvironment(
         SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
         SolverContext.ProverOptions.GENERATE_MODELS
     )
 
-    return Prover(proverEnv, ctx, input)
+    return Prover(proverEnv, ctx, input, shutdownManager)
 }
 
 fun makeOtherProver(solver: Solvers, origin: IProver): IProver {
+    val shutdownManager = ShutdownManager.create()
+    val ctx = SolverContextFactory.createSolverContext(
+        Configuration.defaultConfiguration(),
+        LogManager.createNullLogManager(),
+        shutdownManager.notifier, solver
+    )
+
     return SecondaryProver(
-        SolverContextFactory.createSolverContext(solver),
+        ctx,
         origin.constraints,
-        origin
+        origin,
+        shutdownManager
     )
 }

@@ -6,5 +6,5 @@ import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.prover.IProver
 
 class IntersectionsCoverageSamplerProvider : CoverageSamplerProvider() {
-    override fun invoke(prover: IProver): CoverageSampler = ModelsIntersectionCoverage(prover, prover.booleans)
+    override fun invoke(prover: IProver): CoverageSampler = ModelsIntersectionCoverage(prover, prover.booleans, 2)
 }

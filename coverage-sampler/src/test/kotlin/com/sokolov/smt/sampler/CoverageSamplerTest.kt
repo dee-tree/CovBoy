@@ -8,6 +8,9 @@ import com.sokolov.covboy.prover.SecondaryProver
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
+import org.sosy_lab.common.ShutdownManager
+import org.sosy_lab.common.configuration.Configuration
+import org.sosy_lab.common.log.LogManager
 import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
@@ -15,7 +18,7 @@ import java.io.File
 import java.util.stream.Stream
 
 
-@Deprecated("use ")
+@Deprecated("use CoverageEstimator")
 abstract class CoverageSamplerTest {
 
     @ParameterizedTest
@@ -24,31 +27,33 @@ abstract class CoverageSamplerTest {
 
         logger().info("input file: $inputPath")
 
-        val context = SolverContextFactory.createSolverContext(Solvers.Z3)
+        val primaryShutdownManager = ShutdownManager.create()
+        val primaryContext = SolverContextFactory.createSolverContext(
+            Configuration.defaultConfiguration(),
+            LogManager.createNullLogManager(),
+            primaryShutdownManager.notifier,
+            Solvers.Z3
+        )
 
-        val cvc4Context = SolverContextFactory.createSolverContext(Solvers.CVC4)
+        val primaryProver = primaryContext.newProverEnvironment(
+            SolverContext.ProverOptions.GENERATE_MODELS,
+            SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
+            SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
+        ).let { Prover(it, primaryContext, File(inputPath), primaryShutdownManager) }
+
+        val shutdownManager = ShutdownManager.create()
+        val context = SolverContextFactory.createSolverContext(
+            Configuration.defaultConfiguration(),
+            LogManager.createNullLogManager(),
+            shutdownManager.notifier,
+            Solvers.CVC4
+        )
 
         val prover = context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-//            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
-        ).let { Prover(it, context, File(inputPath)) }
-
-        val cvc4Prover = cvc4Context.newProverEnvironment(
-            SolverContext.ProverOptions.GENERATE_MODELS,
-            SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
-            SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-//            SolverContext.ProverOptions.GENERATE_UNSAT_CORE_OVER_ASSUMPTIONS
-        )
-
-        val cvc4ProverAsSecondary = SecondaryProver(
-            cvc4Prover,
-            cvc4Context,
-            prover.constraints,
-            prover
-        )
-
+        ).let { SecondaryProver(context, primaryProver.constraints, primaryProver, shutdownManager) }
 
         val coverage = coverageSampler(prover).computeCoverage()
         println("coverage value for $inputPath: ${coverage.coverageNumber}")
@@ -66,7 +71,7 @@ abstract class CoverageSamplerTest {
     companion object {
         @JvmStatic
         fun provideSmtInputPaths(): Stream<Arguments> =
-            Stream.of(*(File("input").listFiles { file: File -> file.isFile && "bug-15" in file.name }?.map { Arguments.of(it.absolutePath) }
+            Stream.of(*(File("input").listFiles { file: File -> file.isFile && "bug2-15" in file.name }?.map { Arguments.of(it.absolutePath) }
                 ?: emptyList()).toTypedArray())
     }
 

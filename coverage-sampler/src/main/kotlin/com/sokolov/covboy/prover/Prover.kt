@@ -1,22 +1,25 @@
 package com.sokolov.covboy.prover
 
+import org.sosy_lab.common.ShutdownManager
 import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.solvers.boolector.BoolectorUnsatCoreWithAssumptions
 import org.sosy_lab.java_smt.solvers.z3.addConstraintCustom
 import java.io.File
+import java.util.*
 
 
 open class Prover(
     private val delegate: ProverEnvironment,
     override val context: SolverContext,
-    formulas: Collection<BooleanFormula>
+    private val shutdownManager: ShutdownManager,
+    formulas: Collection<BooleanFormula>,
 ) : IProver, ProverEnvironment by delegate {
 
-    protected val _constraints = mutableListOf<BooleanFormula>()
+    private val checkTimeOut = 100L // 10 sec
 
     override val constraints: List<BooleanFormula>
-        get() = _constraints.toList()
+        get() = constraintsStack.fold(emptyList<BooleanFormula>()) { curr, acc -> acc + curr } + currentLevelConstraints
 
     // checks optimization via last status remember
     private var lastCheckStatus: Status? = null
@@ -28,6 +31,9 @@ open class Prover(
     override val checksStatistics: Map<String, ChecksCounter>
         get() = checksMap
 
+    private val constraintsStack: Stack<List<BooleanFormula>> = Stack()
+    private val currentLevelConstraints = mutableListOf<BooleanFormula>()
+
 
     init {
         formulas.forEach(::addConstraint)
@@ -36,8 +42,9 @@ open class Prover(
     constructor(
         delegate: ProverEnvironment,
         context: SolverContext,
-        formulaInputFile: File
-    ) : this(delegate, context, context.formulaManager.readFormulasFromSmtLib(formulaInputFile))
+        formulaInputFile: File,
+        shutdownManager: ShutdownManager
+    ) : this(delegate, context, shutdownManager, context.formulaManager.readFormulasFromSmtLib(formulaInputFile))
 
 
     override val assertionsStorage: AssertionsStorage = AssertionsStorage(this, ::onAssertionChanged)
@@ -45,7 +52,7 @@ open class Prover(
     override val unsatCoreWithAssumptions: List<BooleanFormula>
         get() {
             if (solver != SolverContextFactory.Solvers.BOOLECTOR)
-            return unsatCore
+                return unsatCore
 
             // bolector unsat core
 
@@ -71,7 +78,7 @@ open class Prover(
             .addConstraintCustom(constraint)
             .also {
                 isCheckNeed = true
-                _constraints.add(constraint)
+                currentLevelConstraints.add(constraint)
             }
     }
 
@@ -90,38 +97,46 @@ open class Prover(
     override fun check(reason: String): Status = check(emptyList(), reason)
 
     override fun check(assumptions: List<BooleanFormula>, reason: String): Status {
-
         if (!isCheckNeed)
             return lastCheckStatus!!
 
-        lastCheckStatus = try {
-            push()
-            (assumptions + assertionsStorage.assumptions).toSet().forEach { assumption ->
-                addConstraint(assumption)
-            }
-
-            val isUnsat = this.isUnsat
-            if (isUnsat) Status.UNSAT else Status.SAT
-        } catch (e: SolverException) {
-            Status.UNKNOWN
+        push()
+        (assumptions + assertionsStorage.assumptions).toSet().forEach { assumption ->
+            addConstraintCustom(assumption)
         }
+
+        lastCheckStatus = withTimeout(
+            checkTimeOut,
+            {
+                try {
+                    val isUnsat = this@Prover.isUnsat
+                    if (isUnsat) Status.UNSAT else Status.SAT
+                } catch (e: SolverException){
+                    Status.UNKNOWN
+                }
+            },
+            { /* on timeout */ /*shutdownManager.requestShutdown("timeout $checkTimeOut ms exceeded");*/ Status.UNKNOWN }
+        )
+
         isCheckNeed = false
-
         checksMap.getOrPut(reason) { MutableChecksCounter() }.update(lastCheckStatus!!)
-
-        if (lastCheckStatus == Status.UNKNOWN)
-            throw IllegalStateException("got unknown status on solver check...")
-
         return lastCheckStatus!!
     }
 
     override fun push() {
+        constraintsStack.push(currentLevelConstraints.toList())
+        currentLevelConstraints.clear()
+
         delegate.push()
         isCheckNeed = true
     }
 
     override fun pop() {
         delegate.pop()
+
+        currentLevelConstraints.clear()
+        currentLevelConstraints.addAll(constraintsStack.pop().toMutableList())
+
         isCheckNeed = true
     }
 

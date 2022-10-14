@@ -4,6 +4,7 @@ import com.sokolov.covboy.coverage.AtomCoverage
 import com.sokolov.covboy.coverage.CoverageResult
 import com.sokolov.covboy.coverage.EmptyAtomCoverage
 import com.sokolov.covboy.smt.getBooleanValue
+import org.sosy_lab.common.ShutdownManager
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.ProverEnvironment
@@ -15,15 +16,15 @@ class SecondaryProver(
     private val delegate: ProverEnvironment,
     context: SolverContext,
     z3Formulas: Collection<BooleanFormula>,
-
     private val z3Prover: IProver,
-) : Prover(delegate, context, z3Formulas.map { it.z3FormulaTransform(z3Prover.context, context.formulaManager) }) {
+    private val shutdownManager: ShutdownManager
+) : Prover(delegate, context, shutdownManager, z3Formulas.map { it.z3FormulaTransform(z3Prover.context, context.formulaManager) }) {
 
-    constructor(context: SolverContext, z3Formulas: Collection<BooleanFormula>, z3Prover: IProver) : this(context.newProverEnvironment(
+    constructor(context: SolverContext, z3Formulas: Collection<BooleanFormula>, z3Prover: IProver, shutdownManager: ShutdownManager) : this(context.newProverEnvironment(
         SolverContext.ProverOptions.GENERATE_MODELS,
         SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
         SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-    ), context, z3Formulas, z3Prover)
+    ), context, z3Formulas, z3Prover, shutdownManager)
 
     /**
      * mapper of master's formula to this solver formula

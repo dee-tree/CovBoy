@@ -27,7 +27,6 @@ class ModelsIntersectionCoverage(
 
 
     override fun computeCoverage(
-//        coverModel: (Model) -> Set<AtomCoverageBase>,
         coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
         coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
@@ -95,23 +94,20 @@ class ModelsIntersectionCoverage(
                     coverageChanged = coverageChanged || thisModelChangedCoverage
                 }
 
-                if (currentBoundModels.count() < intersectionSize)
+                if (currentBoundModels.count() < intersectionSize) {
+                    println("Break in intersection take loop")
                     break
+                }
 
                 val intersection = currentBoundModels
                     .fold(
-                        // TODO: keep in mind that eval must generate incomplete models
                         coveragePredicates.map { it to currentBoundModels.first().evaluate(it) }
                             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
                             .toSet()
                     ) { acc, currentModel ->
-                        // TODO: keep in mind that eval must generate incomplete models
                         acc.intersect(coveragePredicates.map { it to currentModel.evaluate(it) }
                             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }.toSet())
                     }.filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
-
-                logger().trace("intersection found: $intersection")
-
 
                 if (intersection.isEmpty()) {
                     logger().info("No intersection found")
@@ -122,7 +118,6 @@ class ModelsIntersectionCoverage(
                 val intersectionConstraint = intersection.mergeWithAnd(formulaManager.booleanFormulaManager)
 
                 val negatedIntersection = intersectionConstraint.not(formulaManager.booleanFormulaManager)
-                logger().trace("Add constraint on negated intersection")
                 val negIntersectionAssertion = prover.addConstraint(negatedIntersection, "ic.switchable.negintersection")
 
                 assertion = negIntersectionAssertion
@@ -144,16 +139,12 @@ class ModelsIntersectionCoverage(
         logger().info("Useful / useless coeff of models coverage from intersection: ${usefulIntersectionModelsCoverage.toDouble() / uselessIntersectionModelsCoverage}")
     }
 
-    /**
-     * @return true if coverage changed
-     */
     private fun resolveConflict(
         assertion: Assertion,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
     ) {
-        logger().trace("Resolve conflict with $assertion")
+        logger().trace("Resolve conflict")
         val unsatCore = prover.unsatCoreWithAssumptions
-        logger().trace("UnsatCore: $unsatCore")
 
         val customAssertionsFromCore = prover.filterAssertions { it.uidExpr in unsatCore }
 
