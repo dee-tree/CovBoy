@@ -23,7 +23,7 @@ fun <T> withTimeout(timeoutMillis: Long, action: () -> T, onTimeout: () -> T): T
         try {
             cancellation.get()
         } catch (e: ExecutionException) {
-            throw e.cause ?: e
+            throw /*e.cause ?: */e
         }
     }
 }
