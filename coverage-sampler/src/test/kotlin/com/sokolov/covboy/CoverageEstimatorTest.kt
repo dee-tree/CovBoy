@@ -33,7 +33,6 @@ abstract class CoverageEstimatorTest {
 
         val baseSampler = coverageSampler(originProver)
         val otherSampler = coverageSampler(otherProver)
-
         try {
             compare(
                 baseSampler.computeCoverage(),
@@ -41,7 +40,7 @@ abstract class CoverageEstimatorTest {
                     .let { if (otherProver is SecondaryProver) otherProver.getOriginalCoverage(it) else it }
             )
         } catch (e: IllegalStateException) {
-            assumeTrue(false)
+            assumeTrue(false, "Can't check satisfiability")
         }
     }
 
@@ -64,7 +63,7 @@ abstract class CoverageEstimatorTest {
     companion object {
 
         fun getInputs(): List<File> = File("input")
-            .listFiles { file: File -> file.isFile && "bug2-15" in file.name }
+            .listFiles { file: File -> file.isFile }
             ?.map { it } ?: emptyList()
 
         val excludedSolvers = listOf<Solvers>(
@@ -72,7 +71,7 @@ abstract class CoverageEstimatorTest {
             //Solvers.PRINCESS, // does not support unsat core with assumptions
             //Solvers.SMTINTERPOL,
             //Solvers.YICES2, // invalid models on boolean_simple
-//        SolverContextFactory.Solvers.BOOLECTOR, // crash on intersections boolean_simple (boolector_bv_assignment: cannot retrieve model if input formula is not SAT)
+            //SolverContextFactory.Solvers.BOOLECTOR
             //Solvers.CVC4
         )
 
@@ -113,20 +112,16 @@ fun makeOriginProver(solver: Solvers, input: File): BaseProverEnvironment {
         SolverContext.ProverOptions.GENERATE_MODELS
     )
 
-    return Prover(proverEnv, ctx, input, shutdownManager)
+    return Prover(proverEnv, ctx, input)
 }
 
 fun makeOtherProver(solver: Solvers, origin: BaseProverEnvironment): BaseProverEnvironment {
-    val shutdownManager = ShutdownManager.create()
     val ctx = SolverContextFactory.createSolverContext(
-        Configuration.defaultConfiguration(),
-        LogManager.createNullLogManager(),
-        shutdownManager.notifier, solver
+        solver
     )
 
     return SecondaryProver(
         ctx,
-        origin,
-        shutdownManager
+        origin
     )
 }

@@ -7,8 +7,9 @@ import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.ProverEnvironment
 import sun.misc.Unsafe
 import java.lang.reflect.Field
+import java.lang.reflect.Method
 
-private fun ProverEnvironment.btor(): Long {
+internal fun ProverEnvironment.btor(): Long {
     val proverEnv: BoolectorAbstractProver<*>
     when {
         this is SecondaryProver -> {
@@ -25,7 +26,7 @@ private fun ProverEnvironment.btor(): Long {
     return btorField.getLong(proverEnv)
 }
 
-private fun ProverEnvironment.boolectorFormulaCreator(): BoolectorFormulaCreator {
+internal fun ProverEnvironment.boolectorFormulaCreator(): BoolectorFormulaCreator {
     val proverEnv: BoolectorAbstractProver<*>
     when {
         this is SecondaryProver -> {
@@ -92,6 +93,18 @@ fun Class<*>.getDeclaredFieldRecursively(name: String): Field {
         } catch (_: Throwable) {
             5 + 3  // P R I K O L
         }
+        current = current.superclass
+    }
+
+    throw NoSuchFieldException()
+}
+
+fun Class<*>.getDeclaredMethodRecursively(name: String, vararg args: Class<*>): Method {
+    var current: Class<*>? = this
+    while (current != null) {
+        try {
+            return current.getDeclaredMethod(name, *args)
+        } catch (_: Throwable) { }
         current = current.superclass
     }
 

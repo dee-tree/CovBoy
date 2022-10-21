@@ -22,6 +22,9 @@ class CoverageEvaluator(
     val uncoveredBooleansWithAnyValue: Set<Assignment<BooleanFormula>>
         get() = uncoveredValues.entries.map { Assignment(it.key, it.value.random()) }.toSet()
 
+    val uncoveredValuesCount: Double
+        get() = uncoveredValues.values.sumOf { it.size }.toDouble()
+
 
     init {
         coveragePredicates.forEach { boolExpr ->

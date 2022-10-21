@@ -1,56 +1,88 @@
 package com.microsoft.z3.coverage.unsatcore
 
-/*
-class UnsatCoreBasedCoverageSampler(solver: Solver, context: Context) : CoverageSampler(solver, context) {
+import com.sokolov.covboy.coverage.AtomCoverageBase
+import com.sokolov.covboy.coverage.CoverageSampler
+import com.sokolov.covboy.coverage.EmptyAtomCoverage
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.prover.Status
+import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
+import com.sokolov.covboy.prover.model.ModelAssignments
+import com.sokolov.covboy.smt.getFunctionDeclarationKind
+import com.sokolov.covboy.smt.nand
+import com.sokolov.covboy.smt.not
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.FunctionDeclarationKind
+
+
+class UnsatCoreBasedCoverageSampler(
+    prover: BaseProverEnvironment,
+    coveragePredicates: Collection<BooleanFormula>
+) : CoverageSampler(prover, coveragePredicates) {
 
     override fun computeCoverage(
-        coverModel: (Model) -> Set<AtomCoverageBase>,
-        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit
+        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
+        coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
+        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
         while (!isCovered) {
 
             val assertions = buildList {
                 uncoveredAtomsWithAnyValue.first().let { expr ->
-                    customAssertionsStorage.assert(expr.asExpr(), false).also { add(it) }
+                    prover.addConstraint(expr.asExpr(prover), true, "uc.uncovered.atom").also { add(it) }
                 }
             }
 
-            when (checkWithAssumptions()) {
-                Status.SATISFIABLE -> {
-                    coverModel(solver.model).also { println("covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
+            when (prover.check()) {
+                Status.SAT -> {
+                    val model = BoolModelAssignmentsImpl(prover.model, coveragePredicates, prover)
+
+                    coverModel(model).also { println("covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
                 }
 
-                Status.UNSATISFIABLE -> {
+                Status.UNSAT -> {
                     do {
                         backtrackUnsatCore(onImpossibleAssignmentFound)
-                        if (assertions.any { it.enabled }) {
-                            if (checkWithAssumptions() == Status.SATISFIABLE) {
-                                coverModel(solver.model).also { println("after backtracking covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
-                            }
+
+                        if (assertions.any { it in prover.enabledSwitchableConstraints } && prover.check() == Status.SAT) {
+                            coverModel(
+                                BoolModelAssignmentsImpl(
+                                    prover.model,
+                                    coveragePredicates,
+                                    prover
+                                )
+                            ).also { println("after backtracking covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
                         }
-                    } while (checkWithAssumptions() == Status.UNSATISFIABLE)
-                    coverModel(solver.model)
+                    } while (prover.check() == Status.UNSAT)
+                    coverModel(BoolModelAssignmentsImpl(prover.model, coveragePredicates, prover))
                 }
                 Status.UNKNOWN -> throw IllegalStateException("Unknown result of check")
             }
 
-            assertions.filter { it.enabled }.forEach(Assertion::disable)
+            assertions.filter { it in prover.enabledSwitchableConstraints }.forEach(prover::disableConstraint)
         }
     }
 
-    private fun backtrackUnsatCore(onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit) {
-        val unsatCore = solver.unsatCore
+    private fun backtrackUnsatCore(onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit) {
+        val unsatCore = prover.unsatCore
 
-        val ucAssertions = customAssertionsStorage.assertions.filter { it.uidExpr in unsatCore }
+        val ucAssertions = prover.filterSwitchableConstraints { it.asFormula in unsatCore }
 
         if (ucAssertions.size == 1) {
-            val (atom, value) = ucAssertions.first().let { if (it.expr.isNot) !it.expr to context.mkFalse() else it.expr to context.mkTrue() }
+
+            val (atom, value) = ucAssertions.first().let {
+                if (it.getFunctionDeclarationKind(formulaManager) == FunctionDeclarationKind.NOT) it.not(
+                    prover
+                ) to formulaManager.booleanFormulaManager.makeFalse() else it to formulaManager.booleanFormulaManager.makeTrue()
+            }
             onImpossibleAssignmentFound(Assignment(atom, value))
         }
 
-        customAssertionsStorage.assert(context.nand(*ucAssertions.map { it.expr }.toTypedArray()), true)
+        if (ucAssertions.isEmpty())
+            error("switchable constraints from unsat core are empty!")
 
-        ucAssertions.forEach(Assertion::disable)
+        prover.addConstraint(prover.nand(ucAssertions.map { it }), true, "uc.backtrack")
+
+        ucAssertions.forEach(prover::disableConstraint)
     }
-}*/
+}

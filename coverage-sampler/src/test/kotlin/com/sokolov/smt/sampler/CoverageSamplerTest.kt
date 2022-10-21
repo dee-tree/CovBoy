@@ -27,33 +27,21 @@ abstract class CoverageSamplerTest {
 
         logger().info("input file: $inputPath")
 
-        val primaryShutdownManager = ShutdownManager.create()
-        val primaryContext = SolverContextFactory.createSolverContext(
-            Configuration.defaultConfiguration(),
-            LogManager.createNullLogManager(),
-            primaryShutdownManager.notifier,
-            Solvers.Z3
-        )
+        val primaryContext = SolverContextFactory.createSolverContext(Solvers.Z3)
 
         val primaryProver = primaryContext.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-        ).let { Prover(it, primaryContext, File(inputPath), primaryShutdownManager) }
+        ).let { Prover(it, primaryContext, File(inputPath)) }
 
-        val shutdownManager = ShutdownManager.create()
-        val context = SolverContextFactory.createSolverContext(
-            Configuration.defaultConfiguration(),
-            LogManager.createNullLogManager(),
-            shutdownManager.notifier,
-            Solvers.CVC4
-        )
+        val context = SolverContextFactory.createSolverContext(Solvers.BOOLECTOR)
 
         val prover = context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-        ).let { SecondaryProver(context, primaryProver, shutdownManager) }
+        ).let { SecondaryProver(it, context, primaryProver) }
 
         val coverage = coverageSampler(prover).computeCoverage()
         println("coverage value for $inputPath: ${coverage.coverageNumber}")
@@ -71,7 +59,7 @@ abstract class CoverageSamplerTest {
     companion object {
         @JvmStatic
         fun provideSmtInputPaths(): Stream<Arguments> =
-            Stream.of(*(File("input").listFiles { file: File -> file.isFile && "bug2-15" in file.name }?.map { Arguments.of(it.absolutePath) }
+            Stream.of(*(File("input").listFiles { file: File -> file.isFile }?.map { Arguments.of(it.absolutePath) }
                 ?: emptyList()).toTypedArray())
     }
 

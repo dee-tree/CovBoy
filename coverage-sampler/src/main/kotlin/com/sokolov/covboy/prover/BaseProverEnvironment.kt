@@ -1,6 +1,5 @@
 package com.sokolov.covboy.prover
 
-import com.sokolov.covboy.prover.assertions.AssertionListener
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.solvers.boolector.boolectorUnsatCoreWithAssumptions
@@ -14,16 +13,9 @@ import java.util.concurrent.TimeoutException
 abstract class BaseProverEnvironment(
     private val delegate: ProverEnvironment,
     val context: SolverContext,
-    protected val assertionStorage: AssertionsStorage,
     val timeoutOnCheck: Long = 60_000L
 ) : ProverEnvironment by delegate {
 
-    init {
-        assertionStorage.assertionListener = object : AssertionListener {
-            override fun onAssertionEnabled(assertion: Assertion) = needCheck()
-            override fun onAssertionDisabled(assertion: Assertion) = needCheck()
-        }
-    }
 
     val solverName: Solvers
         get() = context.solverName
@@ -35,22 +27,40 @@ abstract class BaseProverEnvironment(
     val checkCounter: Map<String, ChecksCounter>
         get() = _checkCounter
 
-    val assertions: Set<Assertion>
-        get() = assertionStorage.assertions
+    val assumedFormulas: List<BooleanFormula>
+        get() = constraints.filter { it.enabled }.map { it.asFormula }
+
+    val formulas: List<BooleanFormula>
+        get() = switchableConstraints.filter { it.enabled }.map { it.original } +
+                constraints.filterIsInstance<NonSwitchableConstraint>().map { it.asFormula }
 
     val assumptions: List<BooleanFormula>
-        get() = assertionStorage.assumptions
+        get() = switchableConstraints.filter { it.enabled }.map { it.assumption }
 
-    private val constraintsStack: Stack<List<BooleanFormula>> = Stack()
-    private val currentLevelConstraints = mutableListOf<BooleanFormula>()
+    protected val constraintsStack: Stack<List<Constraint>> = Stack()
+    protected val currentLevelConstraints = mutableListOf<Constraint>()
 
-    val constraints: List<BooleanFormula>
-        get() = constraintsStack.fold(emptyList<BooleanFormula>()) { curr, acc -> acc + curr } + currentLevelConstraints
+    protected val constraints: List<Constraint>
+        get() = constraintsStack.fold(emptyList<Constraint>()) { curr, acc -> acc + curr } + currentLevelConstraints
+
+    protected val switchableConstraints: List<MutableSwitchableConstraint>
+        get() = constraints.filterIsInstance<MutableSwitchableConstraint>()
 
 
     // checks optimization via last status remember
     private var lastCheckStatus: Status? = null
     private var isCheckNeed: Boolean = true
+    private var lastCheckAssumptions: List<BooleanFormula> = emptyList()
+
+    init {
+        push()
+    }
+
+    fun reset() {
+        while (constraintsStack.isNotEmpty()) {
+            pop()
+        }
+    }
 
     protected fun needCheck() {
         isCheckNeed = true
@@ -59,7 +69,7 @@ abstract class BaseProverEnvironment(
     val unsatCoreWithAssumptions: List<BooleanFormula>
         get() {
             if (solverName != Solvers.BOOLECTOR)
-                return unsatCore
+                return delegate.unsatCore
 
             // bolector unsat core
             return this.boolectorUnsatCoreWithAssumptions()
@@ -77,53 +87,60 @@ abstract class BaseProverEnvironment(
 
     open val booleans: Set<BooleanFormula>
         get() = buildSet {
-            constraints.forEach { constraint -> addAll(constraint.getDeepestBooleanExprs(context.formulaManager)) }
+            formulas.forEach { f -> addAll(f.getDeepestBooleanExprs(context.formulaManager)) }
         }
 
-    /**
-     * Add switchable constraint (with put in assertions storage)
-     */
-    fun addConstraint(constraint: BooleanFormula, tag: String): Assertion {
-        return assertionStorage.assert(constraint, tag)
-    }
-
-    /**
-     * add hard constraint without put in assertions storage
-     */
-    override fun addConstraint(constraint: BooleanFormula): Void? {
-        if (!isCheckNeed) {
+    fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String = ""): BooleanFormula {
+        if (!isCheckNeed && lastCheckAssumptions.isNotEmpty()) {
             pop()
         }
 
-        delegate.addConstraintCustom(constraint)
-        needCheck()
+        if (formula in formulas) {
+            System.err.println("You're trying to add constraint that already added before: $formula")
+        }
+
+        val constraint = if (switchable) {
+            MutableSwitchableConstraint(formula, tag, enabled = true, fm)
+        } else {
+            NonSwitchableConstraint(formula)
+        }
+
+        delegate.addConstraintCustom(constraint.asFormula)
         currentLevelConstraints.add(constraint)
+
+        needCheck()
+
+        return (constraint as? SwitchableConstraint)?.original ?: constraint.asFormula
+    }
+
+    /**
+     * add hard constraint without ability to disable it
+     */
+    override fun addConstraint(f: BooleanFormula): Void? {
+        addConstraint(f, false)
         return null
     }
 
-    final override fun isUnsat(): Boolean = withTimeout(
-        timeoutOnCheck,
-        { delegate.isUnsat },
-        { /* on timeout */
-            /* shutdownManager.requestShutdown("timeout $checkTimeOut ms exceeded") */
-            throw TimeoutException("Timeout $timeoutOnCheck ms exceeded on sat-check")
-        }
-    )
+    final override fun isUnsat(): Boolean = delegate.isUnsat
 
-    fun check(reason: String = "common"): Status = check(emptyList(), reason)
-
-    fun check(assumptions: List<BooleanFormula>, reason: String = "common"): Status {
-        if (!isCheckNeed)
+    fun check(reason: String = "common"): Status {
+        if (!isCheckNeed && lastCheckAssumptions == assumptions)
             return lastCheckStatus!!
+
+        if (lastCheckAssumptions.isNotEmpty()) {
+            pop()
+        }
 
         push()
 
-        (assumptions + this.assumptions).toSet().forEach { assumption ->
-            addConstraintCustom(assumption)
+        lastCheckAssumptions = assumptions.toList()
+
+        assumptions.forEach { assumption ->
+            delegate.addConstraintCustom(assumption)
         }
 
         lastCheckStatus = try {
-            val isUnsat = this.isUnsat
+            val isUnsat = isUnsat
             if (isUnsat) Status.UNSAT else Status.SAT
         } catch (e: SolverException) {
             Status.UNKNOWN
@@ -140,15 +157,38 @@ abstract class BaseProverEnvironment(
         constraintsStack.push(currentLevelConstraints.toList())
         currentLevelConstraints.clear()
         delegate.push()
-        isCheckNeed = true
+        needCheck()
     }
 
     override fun pop() {
         delegate.pop()
         currentLevelConstraints.clear()
-        currentLevelConstraints.addAll(constraintsStack.pop().toMutableList())
-        isCheckNeed = true
+        currentLevelConstraints.addAll(constraintsStack.pop())
+        needCheck()
     }
+
+
+    fun disableConstraint(formula: BooleanFormula) {
+        switchableConstraints.find { it.original == formula }?.disable()
+            ?: error("It's not possible to disable the assertion which is not added already")
+
+        needCheck()
+    }
+
+    fun enableConstraint(formula: BooleanFormula) {
+        switchableConstraints.find { it.original == formula }?.enable()
+            ?: error("It's not possible to enable the assertion which is not added already")
+
+        needCheck()
+    }
+
+    val enabledSwitchableConstraints: List<BooleanFormula>
+        get() = switchableConstraints.filter { it.enabled }.map { it.original }
+
+    fun filterSwitchableConstraints(filter: (SwitchableConstraint) -> Boolean): List<BooleanFormula> {
+        return switchableConstraints.filter(filter).map { it.original }
+    }
+
 
     fun thisSolverImplFormula(formula: Formula): Boolean {
         return when (solverName) {

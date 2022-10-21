@@ -22,7 +22,10 @@ abstract class CoverageSampler(
 
     private var coverageResult: CoverageResult = CoverageResult(emptySet(), 0, 0)
 
-    protected val modelsEnumerator = ModelsEnumerator(prover, formulaManager)
+    protected val modelsEnumerator = ModelsEnumerator(prover)
+
+    protected val uncoveredValuesCount: Double
+        get() = coverageEvaluator.uncoveredValuesCount
 
     protected abstract fun computeCoverage(
         coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,

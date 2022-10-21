@@ -1,7 +1,11 @@
 package com.sokolov.covboy.smt
 
+import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.prover.SecondaryProver
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.visitors.BooleanFormulaVisitor
+import org.sosy_lab.java_smt.api.visitors.FormulaVisitor
+import org.sosy_lab.java_smt.solvers.boolector.isBoolectorFormula
 
 
 internal fun Formula.isBool(formulaManager: BooleanFormulaManager, value: Boolean): Boolean = (this as? BooleanFormula)
@@ -17,10 +21,33 @@ internal fun BooleanFormula.getBooleanValue(formulaManager: BooleanFormulaManage
     else -> throw IllegalArgumentException("$this is not concrete boolean value!")
 }
 
-internal fun BooleanFormula.not(bfm: BooleanFormulaManager): BooleanFormula = bfm.not(this)
+//internal fun BooleanFormula.not(bfm: BooleanFormulaManager): BooleanFormula = bfm.not(this)
+internal fun BooleanFormula.not(bfm: BaseProverEnvironment): BooleanFormula = bfm.fm.booleanFormulaManager.not(this)
 
+/*
+internal fun BooleanFormula.not(prover: BaseProverEnvironment): BooleanFormula {
+    if (this.isBoolectorFormula() && prover is SecondaryProver) {
+        prover as SecondaryProver
 
-/*internal fun BooleanFormula.not(bfm: BooleanFormulaManager): BooleanFormula = bfm.visit(this, object : BooleanFormulaVisitor<BooleanFormula> {
+        val originalNegExpr = (prover.getOriginalFormula(this) as? BooleanFormula)?.not(prover.z3Prover) ?: error("Lol, original ")
+
+//        originalNegExpr?.let { originalNegExpr ->
+            prover.getFromMapper(originalNegExpr)?.let {
+                return it as BooleanFormula
+            }
+
+            val currentProverNeg = prover.fm.booleanFormulaManager.not(this)
+            prover.putToMapper(originalNegExpr, currentProverNeg)
+
+            return currentProverNeg
+//        }
+    } else {
+        return notOptimized(prover.fm.booleanFormulaManager)
+    }
+}
+*/
+
+private fun BooleanFormula.notOptimized(bfm: BooleanFormulaManager): BooleanFormula = bfm.visit(this, object : BooleanFormulaVisitor<BooleanFormula> {
 
     private operator fun BooleanFormula.not() = bfm.not(this)
 
@@ -54,7 +81,27 @@ internal fun BooleanFormula.not(bfm: BooleanFormulaManager): BooleanFormula = bf
     ): BooleanFormula = !quantifiedAST!!
 
     override fun visitAtom(atom: BooleanFormula?, funcDecl: FunctionDeclaration<BooleanFormula>?): BooleanFormula = !atom!!
-})*/
+})
+
+fun Formula.getFunctionDeclarationKind(fm: FormulaManager): FunctionDeclarationKind {
+    return fm.visit(this, object : FormulaVisitor<FunctionDeclarationKind> {
+        override fun visitFreeVariable(p0: Formula?, p1: String?): FunctionDeclarationKind = error("not a function")
+        override fun visitBoundVariable(p0: Formula?, p1: Int): FunctionDeclarationKind = error("not a function")
+        override fun visitConstant(p0: Formula?, p1: Any?): FunctionDeclarationKind = error("not a function")
+        override fun visitQuantifier(
+            p0: BooleanFormula?,
+            p1: QuantifiedFormulaManager.Quantifier?,
+            p2: MutableList<Formula>?,
+            p3: BooleanFormula?
+        ): FunctionDeclarationKind = error("not a function")
+
+        override fun visitFunction(
+            f: Formula,
+            args: List<Formula>,
+            funDecl: FunctionDeclaration<*>
+        ): FunctionDeclarationKind = funDecl.kind
+    })
+}
 
 internal fun BooleanFormulaManager.isNot(a: BooleanFormula): Boolean = this.visit(a, object : BooleanFormulaVisitor<Boolean> {
     override fun visitConstant(value: Boolean): Boolean = false
@@ -92,6 +139,12 @@ internal fun BooleanFormulaManager.isNot(a: BooleanFormula): Boolean = this.visi
 internal fun FormulaManager.implication(a: BooleanFormula, b: BooleanFormula): BooleanFormula {
     return booleanFormulaManager.implication(a, b)
 }
+
+internal fun BaseProverEnvironment.nand(formulas: List<BooleanFormula>): BooleanFormula {
+    return if (formulas.size == 1) formulas.first().not(this)
+    else fm.booleanFormulaManager.and(formulas).not(this)
+}
+
 
 internal fun Formula.isCertainBool(fm: BooleanFormulaManager): Boolean = (this as? BooleanFormula)?.let {
     fm.isTrue(it) || fm.isFalse(it)

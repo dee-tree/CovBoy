@@ -13,7 +13,6 @@ import org.sosy_lab.java_smt.api.*
 
 class ModelsEnumerator(
     private val prover: BaseProverEnvironment,
-    private val formulaManager: FormulaManager
 ) {
     private lateinit var current: Model
     private lateinit var currentModel: ModelAssignments<*>
@@ -35,12 +34,12 @@ class ModelsEnumerator(
         val currentConstraints = predicates
             .map { it to (currentModel as BoolModelAssignmentsImpl).evaluate(it) } // TODO: keep in mind that model's eval must be incomplete producer
             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
-            .filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
-            .mergeWithAnd(formulaManager.booleanFormulaManager)
+            .filter { it.value.isCertainBool(prover.fm.booleanFormulaManager) }
+            .mergeWithAnd(prover)
 
         onModel(currentModel as BoolModelAssignmentsImpl)
 
-        prover.addConstraint(currentConstraints.not(formulaManager.booleanFormulaManager), "concrete-modelneg")
+        prover.addConstraint(currentConstraints.not(prover), false,"concrete-modelneg")
         traversedModelsCount++
     }
 
@@ -64,18 +63,18 @@ class ModelsEnumerator(
 
 internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWith(
     merger: (Array<out BooleanFormula>) -> BooleanFormula,
-    formulaManager: BooleanFormulaManager
+    prover: BaseProverEnvironment
 ): BooleanFormula {
     if (size == 1) return first().let {
         when {
-            it.second.isFalse(formulaManager) -> it.first.not(formulaManager)
+            it.second.isFalse(prover.fm.booleanFormulaManager) -> it.first.not(prover)
             else -> it.first
         }
     }
 
     return merger(
-        (filter { it.second.isTrue(formulaManager) }.map { it.first }
-                + filter { it.second.isFalse(formulaManager) }.map { it.first.not(formulaManager) }
+        (filter { it.second.isTrue(prover.fm.booleanFormulaManager) }.map { it.first }
+                + filter { it.second.isFalse(prover.fm.booleanFormulaManager) }.map { it.first.not(prover) }
                 ).toTypedArray()
     )
 }
@@ -83,39 +82,39 @@ internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWith(
 @JvmName("mergeWithAssignmentOfBooleanFormula")
 internal fun Collection<Assignment<BooleanFormula>>.mergeWith(
     merger: (Array<out BooleanFormula>) -> BooleanFormula,
-    formulaManager: BooleanFormulaManager
+    prover: BaseProverEnvironment
 ): BooleanFormula {
     if (size == 1) return first().let {
         when {
-            it.value.isFalse(formulaManager) -> it.expr.not(formulaManager)
+            it.value.isFalse(prover.fm.booleanFormulaManager) -> it.expr.not(prover)
             else -> it.expr
         }
     }
 
     return merger(
-        (filter { it.value.isTrue(formulaManager) }.map { it.expr }
-                + filter { it.value.isFalse(formulaManager) }.map { it.expr.not(formulaManager) }
+        (filter { it.value.isTrue(prover.fm.booleanFormulaManager) }.map { it.expr }
+                + filter { it.value.isFalse(prover.fm.booleanFormulaManager) }.map { it.expr.not(prover) }
                 ).toTypedArray()
     )
 }
 
 
-internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWithAnd(formulaManager: BooleanFormulaManager): BooleanFormula =
-    mergeWith(formulaManager::and, formulaManager)
+internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWithAnd(prover: BaseProverEnvironment): BooleanFormula =
+    mergeWith(prover.fm.booleanFormulaManager::and, prover)
 
 @JvmName("mergeWithAndAssignmentOfBooleanFormula")
-internal fun Collection<Assignment<BooleanFormula>>.mergeWithAnd(formulaManager: BooleanFormulaManager): BooleanFormula =
-    mergeWith(formulaManager::and, formulaManager)
+internal fun Collection<Assignment<BooleanFormula>>.mergeWithAnd(prover: BaseProverEnvironment): BooleanFormula =
+    mergeWith(prover.fm.booleanFormulaManager::and, prover)
 
-internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWithOr(formulaManager: BooleanFormulaManager): BooleanFormula =
-    mergeWith(formulaManager::or, formulaManager)
+internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWithOr(prover: BaseProverEnvironment): BooleanFormula =
+    mergeWith(prover.fm.booleanFormulaManager::or, prover)
 
-internal fun Map<BooleanFormula, Formula>.mergeWithAnd(formulaManager: BooleanFormulaManager): BooleanFormula =
+internal fun Map<BooleanFormula, Formula>.mergeWithAnd(prover: BaseProverEnvironment): BooleanFormula =
     this.entries
         .map { it.key to it.value }
-        .mergeWithAnd(formulaManager)
+        .mergeWithAnd(prover)
 
-internal fun Map<BooleanFormula, Formula>.mergeWithOr(formulaManager: BooleanFormulaManager): BooleanFormula =
+internal fun Map<BooleanFormula, Formula>.mergeWithOr(prover: BaseProverEnvironment): BooleanFormula =
     this.entries
         .map { it.key to it.value }
-        .mergeWithOr(formulaManager)
+        .mergeWithOr(prover)

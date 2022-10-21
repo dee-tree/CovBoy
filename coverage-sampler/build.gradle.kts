@@ -89,7 +89,13 @@ dependencies {
     implementation(fileTree("dir" to "build/dependencies", "include" to "*.jar"))
 
     testImplementation(kotlin("test"))
+    testImplementation("org.mockito:mockito-core:4.8.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
+}
+
+tasks.withType<Test> {
+    setForkEvery(1)
+    maxParallelForks = 5
 }
 
 // Use a config to identify JavaSMT components

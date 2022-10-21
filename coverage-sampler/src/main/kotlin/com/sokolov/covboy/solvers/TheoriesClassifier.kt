@@ -21,7 +21,7 @@ class TheoriesClassifier(private val prover: BaseProverEnvironment) : FormulaVis
     private var nonLinearArithmetic = false
 
     fun process(): Set<Theories> {
-        prover.constraints.forEach { constraint ->
+        prover.formulas.forEach { constraint ->
             prover.context.formulaManager.visit(constraint, this)
         }
 

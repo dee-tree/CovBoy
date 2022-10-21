@@ -34,8 +34,6 @@ class ModelsIntersectionCoverage(
                 logger().trace("Non-changed coverage iterations: $nonChangedCoverageIterations")
             var coverageChanged = false
 
-            val assertion: Assertion
-
             // if coverage not changed, let's try to add new assert
             if (nonChangedCoverageIterations >= nonChangedCoverageIterationsLimit) {
                 logger().debug("Jump to another atoms in the formula due to $nonChangedCoverageIterationsLimit times coverage didn't change")
@@ -48,13 +46,13 @@ class ModelsIntersectionCoverage(
                     continue
                 }
 
-                val rememberedEnabledAssertions = prover
-                    .assertions.filter { it.enabled && it.tag.startsWith("ic.switchable") }
-                    .onEach(Assertion::disable)
+                val rememberedEnabledConstraints = prover
+                    .filterSwitchableConstraints { it.enabled && it.tag.startsWith("ic.switchable") }
+                    .onEach { prover.disableConstraint(it) }
 
-                val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(formulaManager.booleanFormulaManager)
+                val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(prover)
 
-                assertion = prover.addConstraint(semiUncoveredAtomsAsExpr, "ic.switchable.semiuncovered")
+                val assertion = prover.addConstraint(semiUncoveredAtomsAsExpr, true,"ic.switchable.semiuncovered")
 
                 when (prover.check(checkStatusId())) {
                     Status.SAT -> {
@@ -70,9 +68,9 @@ class ModelsIntersectionCoverage(
                 }
 
                 // disable assertion, because it causes a strong distortion (hard assert on the atom!)
-                assertion.disable()
+                prover.disableConstraint(assertion)
 
-                rememberedEnabledAssertions.forEach(Assertion::enable)
+                rememberedEnabledConstraints.forEach(prover::enableConstraint)
 
             } else {
                 logger().debug("Extract intersections of atoms in $intersectionSize models")
@@ -111,16 +109,14 @@ class ModelsIntersectionCoverage(
                 }
                 logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
 
-                val intersectionConstraint = intersection.mergeWithAnd(formulaManager.booleanFormulaManager)
+                val intersectionConstraint = intersection.mergeWithAnd(prover)
 
-                val negatedIntersection = intersectionConstraint.not(formulaManager.booleanFormulaManager)
-                val negIntersectionAssertion = prover.addConstraint(negatedIntersection, "ic.switchable.negintersection")
-
-                assertion = negIntersectionAssertion
+                val negatedIntersection = intersectionConstraint.not(prover)
+                val negIntersectionAssertion = prover.addConstraint(negatedIntersection, true, "ic.switchable.negintersection")
 
                 if (prover.check(checkStatusId()) == Status.UNSAT) {
                     // conflicted intersection found
-                    resolveConflict(assertion, onImpossibleAssignmentFound)
+                    resolveConflict(negIntersectionAssertion, onImpossibleAssignmentFound)
                 }
             }
 
@@ -136,33 +132,36 @@ class ModelsIntersectionCoverage(
     }
 
     private fun resolveConflict(
-        assertion: Assertion,
+        assertion: BooleanFormula,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
     ) {
         logger().trace("Resolve conflict")
         val unsatCore = prover.unsatCoreWithAssumptions
 
-        val customAssertionsFromCore = prover.assertions.filter { it.uidExpr in unsatCore }
-
-        val customUids = customAssertionsFromCore.map { it.uidExpr }
-        val customConditions = customAssertionsFromCore.map { it.assumption }
+        val customAssertionsFromCore = prover.filterSwitchableConstraints { it.asFormula in unsatCore }
 
         // if only custom assertions conflict
-        if (customUids.size != 1 && unsatCore.all { it in customUids || it in customConditions }) {
+        if (customAssertionsFromCore.size != 1 && unsatCore.all { it in customAssertionsFromCore }) {
             logger().info("Assertions conflict: custom assertions")
-            (customAssertionsFromCore - assertion).filter { it.tag.startsWith("ic.switchable") }.forEach(Assertion::disable)
+
+            prover.filterSwitchableConstraints {
+                it.tag.startsWith("ic.switchable")
+                        && it.original !in customAssertionsFromCore
+                        && it.original != assertion
+            }.forEach(prover::disableConstraint)
+
         } else {
             // conflict with original assertions branch
             logger().info("Assertions conflict: with original formula. Disable the assertion")
-            assertion.disable()
+            prover.disableConstraint(assertion)
             logger().trace("The assertion disabled: $assertion")
 
-            if (customUids.size == 1) {
+            if (customAssertionsFromCore.size == 1) {
                 logger().trace("Found unachievable value of atom: $assertion")
 
-                val (atom, value) = if (formulaManager.booleanFormulaManager.isNot(assertion.expr))
-                    assertion.expr.not(formulaManager.booleanFormulaManager) to formulaManager.booleanFormulaManager.makeFalse()
-                else assertion.expr to formulaManager.booleanFormulaManager.makeTrue()
+                val (atom, value) = if (formulaManager.booleanFormulaManager.isNot(assertion))
+                    assertion.not(prover) to formulaManager.booleanFormulaManager.makeFalse()
+                else assertion to formulaManager.booleanFormulaManager.makeTrue()
                 onImpossibleAssignmentFound(Assignment(atom, value))
             }
         }

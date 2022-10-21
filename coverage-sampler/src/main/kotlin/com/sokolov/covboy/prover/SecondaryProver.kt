@@ -4,7 +4,6 @@ import com.sokolov.covboy.coverage.AtomCoverage
 import com.sokolov.covboy.coverage.CoverageResult
 import com.sokolov.covboy.coverage.EmptyAtomCoverage
 import com.sokolov.covboy.smt.getBooleanValue
-import org.sosy_lab.common.ShutdownManager
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.ProverEnvironment
@@ -15,33 +14,47 @@ import org.sosy_lab.java_smt.solvers.z3.z3FormulaTransform
 open class SecondaryProver(
     private val delegate: ProverEnvironment,
     context: SolverContext,
-    private val z3Prover: BaseProverEnvironment,
-    private val shutdownManager: ShutdownManager
-) : Prover(delegate, context, shutdownManager, z3Prover.constraints.map { it.z3FormulaTransform(z3Prover.context, context.formulaManager) }) {
+    val z3Prover: BaseProverEnvironment,
+) : Prover(delegate, context, z3Prover.formulas.map { it.z3FormulaTransform(z3Prover.context, context.formulaManager) }) {
 
     constructor(
         context: SolverContext,
         z3Prover: BaseProverEnvironment,
-        shutdownManager: ShutdownManager
     ) : this(
         context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,
             SolverContext.ProverOptions.ENABLE_SEPARATION_LOGIC,
             SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-        ), context, z3Prover, shutdownManager
+        ), context, z3Prover
     )
 
     /**
-     * mapper of master's formula to this solver formula
+     * mapper of master's (Z3) formula to this solver formula
      */
     private val mapper = mutableMapOf<Formula, Formula>()
+
+    /**
+     * Z3 formula -> this prover's formula
+     */
+    fun getFromMapper(f: Formula) : Formula? {
+        return mapper[f]
+    }
+
+    fun getOriginalFormula(f: Formula) : Formula? {
+        return mapper.entries.associate { it.value to it.key }[f]
+    }
+
 
     fun getFromMapper(filter: (Formula) -> Boolean) : Formula {
         return mapper.entries.first { filter(it.key) }.value
     }
 
+    fun putToMapper(original: Formula, thisFormula: Formula) {
+        mapper[original] = thisFormula
+    }
+
     init {
-        z3Prover.constraints.map { mapper.getOrPut(it) { it.z3FormulaTransform(z3Prover.context, context.formulaManager) } }
+        z3Prover.formulas.map { mapper.getOrPut(it) { it.z3FormulaTransform(z3Prover.context, context.formulaManager) } }
     }
 
     override val booleans: Set<BooleanFormula>
