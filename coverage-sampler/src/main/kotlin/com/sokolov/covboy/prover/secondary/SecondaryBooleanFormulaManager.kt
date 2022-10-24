@@ -1,9 +1,7 @@
 package com.sokolov.covboy.prover.secondary
 
-import com.sokolov.covboy.smt.isFormulaSupported
 import com.sokolov.covboy.smt.isNotVisit
 import com.sokolov.covboy.smt.notOptimized
-import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.BooleanFormulaManager
 import org.sosy_lab.java_smt.api.Formula
@@ -14,10 +12,9 @@ import org.sosy_lab.java_smt.api.visitors.TraversalProcess
 class SecondaryBooleanFormulaManager(
     private val originalFm: BooleanFormulaManager,
     private val delegate: BooleanFormulaManager,
-    private val secondarySolver: SolverContextFactory.Solvers,
 
-    private val mapper: FormulaMapper
-) : BooleanFormulaManager by delegate {
+    secondaryFM: ISecondaryFM
+) : BooleanFormulaManager by delegate, ISecondaryFM by secondaryFM {
 
     override fun makeTrue(): BooleanFormula {
         return mapper.toSecondary(originalFm.makeTrue())
@@ -180,8 +177,6 @@ class SecondaryBooleanFormulaManager(
 
         return originalFm.toDisjunctionArgs(f, p1)
     }
-
-    private fun areSecondaryFormulas(vararg formulas: Formula) = formulas.all { secondarySolver.isFormulaSupported(it) }
 
     fun isNot(formula: BooleanFormula): Boolean {
         if (areSecondaryFormulas(formula)) {

@@ -11,8 +11,8 @@ class SecondaryIntegerFormulaManager(
     private val originalFm: IntegerFormulaManager,
     private val delegate: IntegerFormulaManager,
 
-    private val mapper: FormulaMapper
-) : IntegerFormulaManager {
+    secondaryFM: ISecondaryFM
+) : IntegerFormulaManager, ISecondaryFM by secondaryFM {
 
     override fun makeNumber(value: Long): NumeralFormula.IntegerFormula {
         return mapper.toSecondary(originalFm.makeNumber(value))

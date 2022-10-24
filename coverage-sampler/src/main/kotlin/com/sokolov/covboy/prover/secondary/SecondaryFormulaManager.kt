@@ -11,23 +11,22 @@ import org.sosy_lab.java_smt.api.visitors.TraversalProcess
 class SecondaryFormulaManager(
     private val originalFm: FormulaManager,
     private val delegate: FormulaManager,
-    private val secondarySolver: Solvers,
 
-    private val mapper: FormulaMapper
-) : FormulaManager by delegate {
+    secondarySolver: Solvers,
+    mapper: FormulaMapper
+) : SecondaryFM(mapper, secondarySolver), FormulaManager by delegate {
 
     private val booleanFormulaManager: BooleanFormulaManager = SecondaryBooleanFormulaManager(
         originalFm.booleanFormulaManager,
         delegate.booleanFormulaManager,
-        secondarySolver,
-        mapper
+        this
     )
 
     private val _integerFormulaManager: IntegerFormulaManager by lazy {
         SecondaryIntegerFormulaManager(
             originalFm.integerFormulaManager,
             delegate.integerFormulaManager,
-            mapper
+            this
         )
     }
 
