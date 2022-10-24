@@ -1,17 +1,19 @@
 package com.sokolov.covboy.prover
 
+import com.sokolov.covboy.logger
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.solvers.boolector.boolectorUnsatCoreWithAssumptions
 import org.sosy_lab.java_smt.solvers.boolector.isBoolectorFormula
 import org.sosy_lab.java_smt.solvers.cvc4.isCVC4Formula
+import org.sosy_lab.java_smt.solvers.z3.Z3UnsatCore
 import org.sosy_lab.java_smt.solvers.z3.addConstraintCustom
 import org.sosy_lab.java_smt.solvers.z3.isZ3Formula
 import java.util.*
 import java.util.concurrent.TimeoutException
 
 abstract class BaseProverEnvironment(
-    private val delegate: ProverEnvironment,
+    open val delegate: ProverEnvironment,
     val context: SolverContext,
     val timeoutOnCheck: Long = 60_000L
 ) : ProverEnvironment by delegate {
@@ -20,7 +22,7 @@ abstract class BaseProverEnvironment(
     val solverName: Solvers
         get() = context.solverName
 
-    val fm: FormulaManager
+    open val fm: FormulaManager
         get() = context.formulaManager
 
     private val _checkCounter = mutableMapOf<String, MutableChecksCounter>()
@@ -68,11 +70,12 @@ abstract class BaseProverEnvironment(
 
     val unsatCoreWithAssumptions: List<BooleanFormula>
         get() {
-            if (solverName != Solvers.BOOLECTOR)
-                return delegate.unsatCore
 
-            // bolector unsat core
-            return this.boolectorUnsatCoreWithAssumptions()
+            return when (solverName) {
+                Solvers.BOOLECTOR -> boolectorUnsatCoreWithAssumptions()
+                Solvers.Z3 -> Z3UnsatCore()
+                else -> delegate.unsatCore
+            }
         }
 
     override fun getUnsatCore(): List<BooleanFormula> = unsatCoreWithAssumptions
@@ -91,9 +94,6 @@ abstract class BaseProverEnvironment(
         }
 
     fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String = ""): BooleanFormula {
-        if (!isCheckNeed && lastCheckAssumptions.isNotEmpty()) {
-            pop()
-        }
 
         if (formula in formulas) {
             System.err.println("You're trying to add constraint that already added before: $formula")
@@ -127,20 +127,12 @@ abstract class BaseProverEnvironment(
         if (!isCheckNeed && lastCheckAssumptions == assumptions)
             return lastCheckStatus!!
 
-        if (lastCheckAssumptions.isNotEmpty()) {
-            pop()
-        }
-
-        push()
-
         lastCheckAssumptions = assumptions.toList()
 
-        assumptions.forEach { assumption ->
-            delegate.addConstraintCustom(assumption)
-        }
-
         lastCheckStatus = try {
-            val isUnsat = isUnsat
+            println("go to check")
+            val isUnsat = delegate.isUnsatWithAssumptions(assumptions)
+            println("checked")
             if (isUnsat) Status.UNSAT else Status.SAT
         } catch (e: SolverException) {
             Status.UNKNOWN
@@ -154,6 +146,7 @@ abstract class BaseProverEnvironment(
     }
 
     override fun push() {
+        logger().trace("push: $currentLevelConstraints")
         constraintsStack.push(currentLevelConstraints.toList())
         currentLevelConstraints.clear()
         delegate.push()
@@ -161,6 +154,7 @@ abstract class BaseProverEnvironment(
     }
 
     override fun pop() {
+        logger().trace("pop: ${constraintsStack.peek()}")
         delegate.pop()
         currentLevelConstraints.clear()
         currentLevelConstraints.addAll(constraintsStack.pop())

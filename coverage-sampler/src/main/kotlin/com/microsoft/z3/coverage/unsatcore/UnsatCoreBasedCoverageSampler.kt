@@ -8,11 +8,10 @@ import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Status
 import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
 import com.sokolov.covboy.prover.model.ModelAssignments
-import com.sokolov.covboy.smt.getFunctionDeclarationKind
+import com.sokolov.covboy.smt.isNot
 import com.sokolov.covboy.smt.nand
 import com.sokolov.covboy.smt.not
 import org.sosy_lab.java_smt.api.BooleanFormula
-import org.sosy_lab.java_smt.api.FunctionDeclarationKind
 
 
 class UnsatCoreBasedCoverageSampler(
@@ -66,23 +65,23 @@ class UnsatCoreBasedCoverageSampler(
     private fun backtrackUnsatCore(onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit) {
         val unsatCore = prover.unsatCore
 
-        val ucAssertions = prover.filterSwitchableConstraints { it.asFormula in unsatCore }
+        val ucAssertions = prover.filterSwitchableConstraints { it.assumption in unsatCore }
 
         if (ucAssertions.size == 1) {
 
             val (atom, value) = ucAssertions.first().let {
-                if (it.getFunctionDeclarationKind(formulaManager) == FunctionDeclarationKind.NOT) it.not(
+                if (formulaManager.booleanFormulaManager.isNot(it)) it.not(
                     prover
                 ) to formulaManager.booleanFormulaManager.makeFalse() else it to formulaManager.booleanFormulaManager.makeTrue()
             }
             onImpossibleAssignmentFound(Assignment(atom, value))
         }
 
-        if (ucAssertions.isEmpty())
-            error("switchable constraints from unsat core are empty!")
+        if (ucAssertions.isNotEmpty()) {
 
-        prover.addConstraint(prover.nand(ucAssertions.map { it }), true, "uc.backtrack")
+            prover.addConstraint(prover.nand(ucAssertions.map { it }), true, "uc.backtrack")
 
-        ucAssertions.forEach(prover::disableConstraint)
+            ucAssertions.forEach(prover::disableConstraint)
+        }
     }
 }

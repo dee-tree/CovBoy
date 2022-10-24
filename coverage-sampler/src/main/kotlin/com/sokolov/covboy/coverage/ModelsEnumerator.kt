@@ -9,7 +9,9 @@ import com.sokolov.covboy.smt.isCertainBool
 import com.sokolov.covboy.smt.isFalse
 import com.sokolov.covboy.smt.isTrue
 import com.sokolov.covboy.smt.not
-import org.sosy_lab.java_smt.api.*
+import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.Formula
+import org.sosy_lab.java_smt.api.Model
 
 class ModelsEnumerator(
     private val prover: BaseProverEnvironment,
@@ -30,9 +32,8 @@ class ModelsEnumerator(
 
         currentModel = BoolModelAssignmentsImpl(current, exprs, prover)
 
-        // get incomplete models to avoid "unknown"/"undefined" predicates
         val currentConstraints = predicates
-            .map { it to (currentModel as BoolModelAssignmentsImpl).evaluate(it) } // TODO: keep in mind that model's eval must be incomplete producer
+            .map { it to (currentModel as BoolModelAssignmentsImpl).evaluate(it) }
             .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
             .filter { it.value.isCertainBool(prover.fm.booleanFormulaManager) }
             .mergeWithAnd(prover)

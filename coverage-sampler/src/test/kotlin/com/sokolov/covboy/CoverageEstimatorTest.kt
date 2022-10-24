@@ -3,7 +3,7 @@ package com.sokolov.covboy
 import com.sokolov.covboy.coverage.CoverageResult
 import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Prover
-import com.sokolov.covboy.prover.SecondaryProver
+import com.sokolov.covboy.prover.secondary.SecondaryProver
 import com.sokolov.covboy.solvers.supportedTheories
 import com.sokolov.covboy.solvers.theories
 import org.junit.jupiter.api.Assumptions.assumeTrue
@@ -40,7 +40,9 @@ abstract class CoverageEstimatorTest {
                     .let { if (otherProver is SecondaryProver) otherProver.getOriginalCoverage(it) else it }
             )
         } catch (e: IllegalStateException) {
-            assumeTrue(false, "Can't check satisfiability")
+            System.err.println("Can't check satisfiability")
+            throw e
+//            assumeTrue(false, "Can't check satisfiability")
         }
     }
 
@@ -63,16 +65,16 @@ abstract class CoverageEstimatorTest {
     companion object {
 
         fun getInputs(): List<File> = File("input")
-            .listFiles { file: File -> file.isFile }
+            .listFiles { file: File -> file.isFile && "simple" in file.name }
             ?.map { it } ?: emptyList()
 
         val excludedSolvers = listOf<Solvers>(
             Solvers.MATHSAT5, // not installed
-            //Solvers.PRINCESS, // does not support unsat core with assumptions
-            //Solvers.SMTINTERPOL,
-            //Solvers.YICES2, // invalid models on boolean_simple
-            //SolverContextFactory.Solvers.BOOLECTOR
-            //Solvers.CVC4
+//            Solvers.PRINCESS,
+//            Solvers.SMTINTERPOL,
+            Solvers.YICES2, // invalid models on boolean_simple (required isUnsat check before model get, because it returns empty models)
+//            Solvers.BOOLECTOR,
+//            Solvers.CVC4
         )
 
         @JvmStatic

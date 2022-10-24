@@ -138,7 +138,7 @@ class ModelsIntersectionCoverage(
         logger().trace("Resolve conflict")
         val unsatCore = prover.unsatCoreWithAssumptions
 
-        val customAssertionsFromCore = prover.filterSwitchableConstraints { it.asFormula in unsatCore }
+        val customAssertionsFromCore = prover.filterSwitchableConstraints { it.assumption in unsatCore }
 
         // if only custom assertions conflict
         if (customAssertionsFromCore.size != 1 && unsatCore.all { it in customAssertionsFromCore }) {

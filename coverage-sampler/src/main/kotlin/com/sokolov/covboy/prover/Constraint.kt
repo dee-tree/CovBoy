@@ -4,6 +4,8 @@ import com.sokolov.covboy.smt.implication
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.FormulaType
+import org.sosy_lab.java_smt.solvers.boolector.isBoolectorFormula
+import org.sosy_lab.java_smt.solvers.boolector.nativeBoolectorTerm
 
 abstract class Constraint(original: BooleanFormula) {
 
@@ -58,7 +60,7 @@ class MutableSwitchableConstraint(
 //    val uid: String = "uid:${original.hashCode()}"
 //    val uidFormula: BooleanFormula = fm.makeVariable(FormulaType.BooleanType, uid)
 
-    override val assumptionId: String = "ass:${original.hashCode()}"
+    override val assumptionId: String = "ass:${original.hash()}"
     override val assumption: BooleanFormula = fm.makeVariable(FormulaType.BooleanType, assumptionId)
 
     override val asFormula: BooleanFormula = fm.implication(assumption, original)
@@ -70,6 +72,11 @@ class MutableSwitchableConstraint(
 
     fun enable() {
         enabled = true
+    }
+
+    private fun BooleanFormula.hash(): Long = when {
+        this.isBoolectorFormula() -> this.nativeBoolectorTerm()
+        else -> this.hashCode().toLong()
     }
 
 }

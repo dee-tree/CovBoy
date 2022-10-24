@@ -4,13 +4,10 @@ import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.logger
 import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Prover
-import com.sokolov.covboy.prover.SecondaryProver
+import com.sokolov.covboy.prover.secondary.SecondaryProver
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-import org.sosy_lab.common.ShutdownManager
-import org.sosy_lab.common.configuration.Configuration
-import org.sosy_lab.common.log.LogManager
 import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
@@ -59,7 +56,7 @@ abstract class CoverageSamplerTest {
     companion object {
         @JvmStatic
         fun provideSmtInputPaths(): Stream<Arguments> =
-            Stream.of(*(File("input").listFiles { file: File -> file.isFile }?.map { Arguments.of(it.absolutePath) }
+            Stream.of(*(File("input").listFiles { file: File -> file.isFile && "simple" in file.name }?.map { Arguments.of(it.absolutePath) }
                 ?: emptyList()).toTypedArray())
     }
 

@@ -16,7 +16,8 @@ abstract class CoverageSampler(
 
     protected val coveragePredicates: Set<BooleanFormula> = coveragePredicates.toSet()
 
-    protected val formulaManager: FormulaManager = prover.context.formulaManager
+    protected val formulaManager: FormulaManager
+        get() = prover.fm
 
     private val coverageEvaluator = CoverageEvaluator(this.coveragePredicates, formulaManager.booleanFormulaManager)
 
