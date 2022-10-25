@@ -32,7 +32,7 @@ private val MathSat5Theories = setOf(
 )
 
 private val PrincessTheories = setOf(
-    INTEGER, RATIONAL, ARRAY, BITVECTOR, UF, QUANTIFIER
+    INTEGER, ARRAY, BITVECTOR, UF, QUANTIFIER
 )
 
 private val SmtInterpolTheories = setOf(

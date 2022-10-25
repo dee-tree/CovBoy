@@ -294,6 +294,10 @@ internal class Z3FormulaTransformer(
                 newFormulaManager.arrayFormulaManager.select(newArgs[0] as ArrayFormula<Formula, Formula>, newArgs[1])
             }
 
+            FunctionDeclarationKind.UF -> {
+                newFormulaManager.ufManager.declareAndCallUF(functionDeclaration.name, functionDeclaration.type, newArgs)
+            }
+
             else -> TODO("Yet not implemented; kind: ${functionDeclaration.kind} of formula: $formula (${formula::class})")
         }
     }

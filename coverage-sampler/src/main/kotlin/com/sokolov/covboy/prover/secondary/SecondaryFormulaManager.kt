@@ -30,12 +30,24 @@ class SecondaryFormulaManager(
         )
     }
 
+    private val _rationalFormulaManager: RationalFormulaManager by lazy {
+        SecondaryRationalFormulaManager(
+            originalFm.rationalFormulaManager,
+            delegate.rationalFormulaManager,
+            this
+        )
+    }
+
     override fun getBooleanFormulaManager(): BooleanFormulaManager {
         return booleanFormulaManager
     }
 
     override fun getIntegerFormulaManager(): IntegerFormulaManager {
         return _integerFormulaManager
+    }
+
+    override fun getRationalFormulaManager(): RationalFormulaManager {
+        return _rationalFormulaManager
     }
 
 
