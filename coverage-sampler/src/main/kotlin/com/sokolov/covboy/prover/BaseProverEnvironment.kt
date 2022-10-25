@@ -1,6 +1,7 @@
 package com.sokolov.covboy.prover
 
 import com.sokolov.covboy.logger
+import com.sokolov.covboy.smt.isCertainBool
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.solvers.boolector.boolectorUnsatCoreWithAssumptions
@@ -98,9 +99,17 @@ abstract class BaseProverEnvironment(
         error("Use isUnsat or check")
     }
 
+    /**
+     * boolean expressions which are not boolean literals
+     */
     open val booleans: Set<BooleanFormula>
         get() = buildSet {
-            formulas.forEach { f -> addAll(f.getDeepestBooleanExprs(context.formulaManager)) }
+            formulas.forEach { f ->
+                addAll(f
+                    .getDeepestBooleanExprs(context.formulaManager)
+                    .filter { !it.isCertainBool(fm.booleanFormulaManager) }
+                )
+            }
         }
 
     fun contains(constraint: BooleanFormula, switchable: Boolean, tag: String = ""): Boolean {
