@@ -43,6 +43,10 @@ class SecondaryIntegerFormulaManager(
     }
 
     override fun negate(f: NumeralFormula.IntegerFormula): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(f)) {
+            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+            return negate(originalF)
+        }
         return mapper.toSecondary(originalFm.negate(f))
     }
 
@@ -50,10 +54,19 @@ class SecondaryIntegerFormulaManager(
         first: NumeralFormula.IntegerFormula,
         second: NumeralFormula.IntegerFormula
     ): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return add(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.add(first, second))
     }
 
-    override fun sum(formulas: MutableList<NumeralFormula.IntegerFormula>): NumeralFormula.IntegerFormula {
+    override fun sum(formulas: List<NumeralFormula.IntegerFormula>): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(*formulas.toTypedArray())) {
+            val originalFormulas = formulas.map { mapper.findOriginal(it) ?: error("not found original term $it") }
+            return sum(originalFormulas)
+        }
         return mapper.toSecondary(originalFm.sum(formulas))
     }
 
@@ -61,6 +74,11 @@ class SecondaryIntegerFormulaManager(
         reduced: NumeralFormula.IntegerFormula,
         subtracted: NumeralFormula.IntegerFormula
     ): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(reduced, subtracted)) {
+            val originalReduced = mapper.findOriginal(reduced) ?: error("not found original term $reduced")
+            val originalSubtracted = mapper.findOriginal(subtracted) ?: error("not found original term $subtracted")
+            return subtract(originalReduced, originalSubtracted)
+        }
         return mapper.toSecondary(originalFm.subtract(reduced, subtracted))
     }
 
@@ -68,6 +86,11 @@ class SecondaryIntegerFormulaManager(
         diviseble: NumeralFormula.IntegerFormula,
         divider: NumeralFormula.IntegerFormula
     ): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(diviseble, divider)) {
+            val originalDiviseble= mapper.findOriginal(diviseble) ?: error("not found original term $diviseble")
+            val originalDivider = mapper.findOriginal(divider) ?: error("not found original term $divider")
+            return divide(originalDiviseble, originalDivider)
+        }
         return mapper.toSecondary(originalFm.divide(diviseble, divider))
     }
 
@@ -75,14 +98,28 @@ class SecondaryIntegerFormulaManager(
         first: NumeralFormula.IntegerFormula,
         second: NumeralFormula.IntegerFormula
     ): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return multiply(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.multiply(first, second))
     }
 
     override fun equal(first: NumeralFormula.IntegerFormula, second: NumeralFormula.IntegerFormula): BooleanFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return equal(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.equal(first, second))
     }
 
-    override fun distinct(formulas: MutableList<NumeralFormula.IntegerFormula>): BooleanFormula {
+    override fun distinct(formulas: List<NumeralFormula.IntegerFormula>): BooleanFormula {
+        if (areSecondaryFormulas(*formulas.toTypedArray())) {
+            val originalFormulas = formulas.map { mapper.findOriginal(it) ?: error("not found original term $it") }
+            return distinct(originalFormulas)
+        }
         return mapper.toSecondary(originalFm.distinct(formulas))
     }
 
@@ -90,6 +127,11 @@ class SecondaryIntegerFormulaManager(
         first: NumeralFormula.IntegerFormula,
         second: NumeralFormula.IntegerFormula
     ): BooleanFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return greaterThan(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.greaterThan(first, second))
     }
 
@@ -97,10 +139,20 @@ class SecondaryIntegerFormulaManager(
         first: NumeralFormula.IntegerFormula,
         second: NumeralFormula.IntegerFormula
     ): BooleanFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return greaterOrEquals(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.greaterOrEquals(first, second))
     }
 
     override fun lessThan(first: NumeralFormula.IntegerFormula, second: NumeralFormula.IntegerFormula): BooleanFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return lessThan(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.lessThan(first, second))
     }
 
@@ -108,10 +160,19 @@ class SecondaryIntegerFormulaManager(
         first: NumeralFormula.IntegerFormula,
         second: NumeralFormula.IntegerFormula
     ): BooleanFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return lessOrEquals(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.lessOrEquals(first, second))
     }
 
     override fun floor(f: NumeralFormula.IntegerFormula): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(f)) {
+            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+            return floor(originalF)
+        }
         return mapper.toSecondary(originalFm.floor(f))
     }
 
@@ -120,6 +181,11 @@ class SecondaryIntegerFormulaManager(
         p1: NumeralFormula.IntegerFormula,
         p2: BigInteger
     ): BooleanFormula {
+        if (areSecondaryFormulas(p0, p1)) {
+            val originalP0 = mapper.findOriginal(p0) ?: error("not found original term $p0")
+            val originalP1 = mapper.findOriginal(p1) ?: error("not found original term $p1")
+            return modularCongruence(originalP0, originalP1, p2)
+        }
         return mapper.toSecondary(originalFm.modularCongruence(p0, p1, p2))
     }
 
@@ -128,6 +194,11 @@ class SecondaryIntegerFormulaManager(
         p1: NumeralFormula.IntegerFormula,
         p2: Long
     ): BooleanFormula {
+        if (areSecondaryFormulas(p0, p1)) {
+            val originalP0 = mapper.findOriginal(p0) ?: error("not found original term $p0")
+            val originalP1 = mapper.findOriginal(p1) ?: error("not found original term $p1")
+            return modularCongruence(originalP0, originalP1, p2)
+        }
         return mapper.toSecondary(originalFm.modularCongruence(p0, p1, p2))
     }
 
@@ -135,6 +206,11 @@ class SecondaryIntegerFormulaManager(
         first: NumeralFormula.IntegerFormula,
         second: NumeralFormula.IntegerFormula
     ): NumeralFormula.IntegerFormula {
+        if (areSecondaryFormulas(first, second)) {
+            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
+            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+            return modulo(originalFirst, originalSecond)
+        }
         return mapper.toSecondary(originalFm.modulo(first, second))
     }
 }
