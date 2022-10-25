@@ -8,7 +8,7 @@ import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isCertainBool
 import com.sokolov.covboy.smt.isFalse
 import com.sokolov.covboy.smt.isTrue
-import com.sokolov.covboy.smt.not
+import com.sokolov.covboy.smt.notOptimized
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.Model
@@ -40,7 +40,7 @@ class ModelsEnumerator(
 
         onModel(currentModel as BoolModelAssignmentsImpl)
 
-        prover.addConstraint(currentConstraints.not(prover), false,"concrete-modelneg")
+        prover.addConstraint(prover.fm.booleanFormulaManager.notOptimized(currentConstraints), false, "concrete-modelneg")
         traversedModelsCount++
     }
 
@@ -68,15 +68,16 @@ internal fun Collection<Pair<BooleanFormula, Formula>>.mergeWith(
 ): BooleanFormula {
     if (size == 1) return first().let {
         when {
-            it.second.isFalse(prover.fm.booleanFormulaManager) -> it.first.not(prover)
+            it.second.isFalse(prover.fm.booleanFormulaManager) -> prover.fm.booleanFormulaManager.notOptimized(it.first)
             else -> it.first
         }
     }
 
     return merger(
         (filter { it.second.isTrue(prover.fm.booleanFormulaManager) }.map { it.first }
-                + filter { it.second.isFalse(prover.fm.booleanFormulaManager) }.map { it.first.not(prover) }
-                ).toTypedArray()
+                + filter { it.second.isFalse(prover.fm.booleanFormulaManager) }.map {
+            prover.fm.booleanFormulaManager.notOptimized(it.first)
+        }).toTypedArray()
     )
 }
 
@@ -87,15 +88,16 @@ internal fun Collection<Assignment<BooleanFormula>>.mergeWith(
 ): BooleanFormula {
     if (size == 1) return first().let {
         when {
-            it.value.isFalse(prover.fm.booleanFormulaManager) -> it.expr.not(prover)
+            it.value.isFalse(prover.fm.booleanFormulaManager) -> prover.fm.booleanFormulaManager.notOptimized(it.expr)
             else -> it.expr
         }
     }
 
     return merger(
         (filter { it.value.isTrue(prover.fm.booleanFormulaManager) }.map { it.expr }
-                + filter { it.value.isFalse(prover.fm.booleanFormulaManager) }.map { it.expr.not(prover) }
-                ).toTypedArray()
+                + filter { it.value.isFalse(prover.fm.booleanFormulaManager) }.map {
+            prover.fm.booleanFormulaManager.notOptimized(it.expr)
+        }).toTypedArray()
     )
 }
 

@@ -1,6 +1,5 @@
 package com.sokolov.covboy.smt
 
-import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.secondary.SecondaryBooleanFormulaManager
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
@@ -25,8 +24,6 @@ internal fun BooleanFormula.getBooleanValue(formulaManager: BooleanFormulaManage
     this.isFalse(formulaManager) -> false
     else -> throw IllegalArgumentException("$this is not concrete boolean value!")
 }
-
-internal fun BooleanFormula.not(bfm: BaseProverEnvironment): BooleanFormula = bfm.fm.booleanFormulaManager.not(this)
 
 internal fun BooleanFormulaManager.notOptimized(f: BooleanFormula): BooleanFormula =
     this.visit(f, object : BooleanFormulaVisitor<BooleanFormula> {
@@ -133,9 +130,10 @@ internal fun FormulaManager.implication(a: BooleanFormula, b: BooleanFormula): B
     return booleanFormulaManager.implication(a, b)
 }
 
-internal fun BaseProverEnvironment.nand(formulas: List<BooleanFormula>): BooleanFormula {
-    return if (formulas.size == 1) formulas.first().not(this)
-    else fm.booleanFormulaManager.and(formulas).not(this)
+internal fun BooleanFormulaManager.nand(formulas: List<BooleanFormula>): BooleanFormula = when {
+    formulas.isEmpty() -> error("empty args of nand")
+    formulas.size == 1 -> notOptimized(formulas.first())
+    else -> not(and(formulas))
 }
 
 

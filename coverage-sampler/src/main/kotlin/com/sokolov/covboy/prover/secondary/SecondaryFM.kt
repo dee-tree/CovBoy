@@ -12,4 +12,11 @@ abstract class SecondaryFM(
     override fun areSecondaryFormulas(vararg formulas: Formula) = formulas.all {
         secondarySolver.isFormulaSupported(it)
     }
+
+    override fun areAnySecondaryFormula(vararg formulas: Formula): Boolean = formulas.any {
+        secondarySolver.isFormulaSupported(it)
+    }
+
+    override fun <T : Formula> T.asOriginal(): T = this.asOriginalOrNull() ?: error("not found original term $this")
+
 }

@@ -29,9 +29,9 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun equivalence(first: BooleanFormula, second: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(first, second)) {
-            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
-            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+        if (areAnySecondaryFormula(first, second)) {
+            val originalFirst = first.asOriginal()
+            val originalSecond = second.asOriginal()
             return equivalence(originalFirst, originalSecond)
         }
 
@@ -39,19 +39,19 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun implication(from: BooleanFormula, to: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(from, to)) {
-            val originalFrom = mapper.findOriginal(from) ?: error("not found original term $from")
-            val originalTo = mapper.findOriginal(to) ?: error("not found original term $to")
+        if (areAnySecondaryFormula(from, to)) {
+            val originalFrom = from.asOriginal()
+            val originalTo = to.asOriginal()
             return implication(originalFrom, originalTo)
         }
         return mapper.toSecondary(originalFm.implication(from, to))
     }
 
     override fun <T : Formula> ifThenElse(ifFormula: BooleanFormula, thenFormula: T, elseFormula: T): T {
-        if (areSecondaryFormulas(ifFormula, thenFormula, elseFormula)) {
-            val originalIf = mapper.findOriginal(ifFormula) ?: error("not found original term $ifFormula")
-            val originalThen = mapper.findOriginal(thenFormula) ?: error("not found original term $thenFormula")
-            val originalElse = mapper.findOriginal(elseFormula) ?: error("not found original term $elseFormula")
+        if (areAnySecondaryFormula(ifFormula, thenFormula, elseFormula)) {
+            val originalIf = ifFormula.asOriginal()
+            val originalThen = thenFormula.asOriginal()
+            val originalElse = elseFormula.asOriginal()
             return ifThenElse(originalIf, originalThen, originalElse)
         }
 
@@ -59,8 +59,8 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun not(f: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(f)) {
-            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
             return not(originalF)
         }
 
@@ -69,9 +69,9 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun and(first: BooleanFormula, second: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(first, second)) {
-            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
-            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+        if (areAnySecondaryFormula(first, second)) {
+            val originalFirst = first.asOriginal()
+            val originalSecond = second.asOriginal()
             return and(originalFirst, originalSecond)
         }
 
@@ -79,16 +79,16 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun and(formulas: Collection<BooleanFormula>): BooleanFormula {
-        if (areSecondaryFormulas(*formulas.toTypedArray())) {
-            val originals = formulas.map { mapper.findOriginal(it) ?: error("not found original term $it") }
+        if (areAnySecondaryFormula(*formulas.toTypedArray())) {
+            val originals = formulas.map { it.asOriginal() }
             return and(originals)
         }
         return mapper.toSecondary(originalFm.and(formulas))
     }
 
     override fun and(vararg formulas: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(*formulas)) {
-            val originals = formulas.map { mapper.findOriginal(it) ?: error("not found original term $it") }
+        if (areAnySecondaryFormula(*formulas)) {
+            val originals = formulas.map { it.asOriginal() }
             return and(*originals.toTypedArray())
         }
 
@@ -97,9 +97,9 @@ class SecondaryBooleanFormulaManager(
 
 
     override fun or(first: BooleanFormula, second: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(first, second)) {
-            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
-            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+        if (areAnySecondaryFormula(first, second)) {
+            val originalFirst = first.asOriginal()
+            val originalSecond = second.asOriginal()
             return or(originalFirst, originalSecond)
         }
 
@@ -107,8 +107,8 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun or(formulas: Collection<BooleanFormula>): BooleanFormula {
-        if (areSecondaryFormulas(*formulas.toTypedArray())) {
-            val originals = formulas.map { mapper.findOriginal(it) ?: error("not found original term $it") }
+        if (areAnySecondaryFormula(*formulas.toTypedArray())) {
+            val originals = formulas.map { it.asOriginal() }
             return or(originals)
         }
 
@@ -116,8 +116,8 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun or(vararg formulas: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(*formulas)) {
-            val originals = formulas.map { mapper.findOriginal(it) ?: error("not found original term $it") }
+        if (areAnySecondaryFormula(*formulas)) {
+            val originals = formulas.map { it.asOriginal() }
             return or(*originals.toTypedArray())
         }
 
@@ -126,9 +126,9 @@ class SecondaryBooleanFormulaManager(
 
 
     override fun xor(first: BooleanFormula, second: BooleanFormula): BooleanFormula {
-        if (areSecondaryFormulas(first, second)) {
-            val originalFirst = mapper.findOriginal(first) ?: error("not found original term $first")
-            val originalSecond = mapper.findOriginal(second) ?: error("not found original term $second")
+        if (areAnySecondaryFormula(first, second)) {
+            val originalFirst = first.asOriginal()
+            val originalSecond = second.asOriginal()
             return xor(originalFirst, originalSecond)
         }
 
@@ -136,16 +136,18 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun <R : Any> visit(f: BooleanFormula, visitor: BooleanFormulaVisitor<R>): R {
-        if (areSecondaryFormulas(f)) {
-            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
             return visit(originalF, visitor)
         }
-        return originalFm.visit(f, visitor)
+
+        val res = originalFm.visit(f, visitor)
+        return if (res is Formula && !areSecondaryFormulas(res)) mapper.toSecondary(res) else res
     }
 
     override fun visitRecursively(f: BooleanFormula, visitor: BooleanFormulaVisitor<TraversalProcess>) {
-        if (areSecondaryFormulas(f)) {
-            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
             return visitRecursively(originalF, visitor)
         }
 
@@ -153,8 +155,8 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun transformRecursively(f: BooleanFormula, visitor: BooleanFormulaTransformationVisitor): BooleanFormula {
-        if (areSecondaryFormulas(f)) {
-            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
             return transformRecursively(originalF, visitor)
         }
 
@@ -162,16 +164,16 @@ class SecondaryBooleanFormulaManager(
     }
 
     override fun toConjunctionArgs(f: BooleanFormula, p1: Boolean): Set<BooleanFormula> {
-        if (areSecondaryFormulas(f)) {
-            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
             return toConjunctionArgs(originalF, p1)
         }
         return originalFm.toConjunctionArgs(f, p1)
     }
 
     override fun toDisjunctionArgs(f: BooleanFormula, p1: Boolean): Set<BooleanFormula> {
-        if (areSecondaryFormulas(f)) {
-            val originalF = mapper.findOriginal(f) ?: error("not found original term $f")
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
             return toDisjunctionArgs(originalF, p1)
         }
 
@@ -179,8 +181,8 @@ class SecondaryBooleanFormulaManager(
     }
 
     fun isNot(formula: BooleanFormula): Boolean {
-        if (areSecondaryFormulas(formula)) {
-            val original = mapper.findOriginal(formula) ?: error("not found original term $formula")
+        if (areAnySecondaryFormula(formula)) {
+            val original = formula.asOriginal()
             return isNot(original)
         }
 

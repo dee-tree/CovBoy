@@ -65,7 +65,7 @@ abstract class CoverageEstimatorTest {
     companion object {
 
         fun getInputs(): List<File> = File("input")
-            .listFiles { file: File -> file.isFile && "simple" in file.name }
+            .listFiles { file: File -> file.isFile && "3190" in file.name }
             ?.map { it } ?: emptyList()
 
         val excludedSolvers = listOf<Solvers>(
@@ -99,6 +99,9 @@ abstract class CoverageEstimatorTest {
 fun checkCompatibility(origin: Solvers, other: Solvers, input: File) {
     val originProver = makeOriginProver(origin, input)
 
+    if (originProver.theories().any { it !in other.supportedTheories }) {
+        System.err.println("Prover $other does not support ${originProver.theories() - other.supportedTheories} needed theories")
+    }
     assumeTrue(other.supportedTheories.containsAll(originProver.theories()))
 }
 

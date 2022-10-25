@@ -9,4 +9,7 @@ interface ISecondaryFM {
     val secondarySolver: SolverContextFactory.Solvers
 
     fun areSecondaryFormulas(vararg formulas: Formula): Boolean
+    fun areAnySecondaryFormula(vararg formulas: Formula): Boolean
+    fun <T : Formula> T.asOriginal(): T
+    fun <T : Formula> T.asOriginalOrNull(): T?
 }

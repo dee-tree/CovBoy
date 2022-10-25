@@ -75,4 +75,8 @@ class SecondaryFormulaManager(
             else -> error("Unknown formula type")
         } as T
     }
+
+    override fun <T : Formula> T.asOriginalOrNull(): T? = if (areSecondaryFormulas(this))
+        mapper.findOriginal(this)
+    else this
 }

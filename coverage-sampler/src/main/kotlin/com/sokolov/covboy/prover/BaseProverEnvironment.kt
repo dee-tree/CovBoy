@@ -71,11 +71,21 @@ abstract class BaseProverEnvironment(
     val unsatCoreWithAssumptions: List<BooleanFormula>
         get() {
 
-            return when (solverName) {
+            val uc = when (solverName) {
                 Solvers.BOOLECTOR -> boolectorUnsatCoreWithAssumptions()
                 Solvers.Z3 -> Z3UnsatCore()
                 else -> delegate.unsatCore
             }
+
+            /*
+            fix to get only assumptions from unsat core, because sometimes it can return full expression,
+            which was assumed (assumption -> expr. We need - assumption, but can get "assumption -> expr").
+            Reproduced in: Princess
+            */
+            return uc.map { ucExpr ->
+                val enabledSwConstraints = switchableConstraints.filter { it.enabled }
+                enabledSwConstraints.find { it.asFormula == ucExpr }?.assumption ?: ucExpr
+            }.toSet().toList()
         }
 
     override fun getUnsatCore(): List<BooleanFormula> = unsatCoreWithAssumptions
@@ -93,10 +103,34 @@ abstract class BaseProverEnvironment(
             formulas.forEach { f -> addAll(f.getDeepestBooleanExprs(context.formulaManager)) }
         }
 
+    fun contains(constraint: BooleanFormula, switchable: Boolean, tag: String = ""): Boolean {
+        return constraints.find { it.switchable == switchable &&
+                if (it is SwitchableConstraint)
+                    it.original == constraint && it.tag == tag
+            else it.asFormula == constraint
+        } != null
+    }
+
+    fun contains(constraint: BooleanFormula): Boolean {
+        return constraints.find {
+            if (it is SwitchableConstraint)
+                it.original == constraint
+            else it.asFormula == constraint
+        } != null
+    }
+
     fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String = ""): BooleanFormula {
 
-        if (formula in formulas) {
-            System.err.println("You're trying to add constraint that already added before: $formula")
+        if (contains(formula)) {
+            System.err.println("You're trying to add ${if (switchable) "switchable" else "non-switchable"} constraint (tag=$tag) that already added before: $formula")
+
+            if (switchable) {
+                switchableConstraints.find { it.original == formula }?.also { enableConstraint(formula) } ?: run {
+                    error("switchable constraint for $formula not found")
+                }
+            }
+
+            return formula
         }
 
         val constraint = if (switchable) {
@@ -130,9 +164,7 @@ abstract class BaseProverEnvironment(
         lastCheckAssumptions = assumptions.toList()
 
         lastCheckStatus = try {
-            println("go to check")
             val isUnsat = delegate.isUnsatWithAssumptions(assumptions)
-            println("checked")
             if (isUnsat) Status.UNSAT else Status.SAT
         } catch (e: SolverException) {
             Status.UNKNOWN

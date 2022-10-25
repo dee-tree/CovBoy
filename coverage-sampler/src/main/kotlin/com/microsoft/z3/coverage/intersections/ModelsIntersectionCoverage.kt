@@ -2,12 +2,14 @@ package com.microsoft.z3.coverage.intersections
 
 import com.sokolov.covboy.coverage.*
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.*
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.prover.Status
 import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
 import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isCertainBool
 import com.sokolov.covboy.smt.isNot
-import com.sokolov.covboy.smt.not
+import com.sokolov.covboy.smt.notOptimized
 import org.sosy_lab.java_smt.api.BooleanFormula
 
 class ModelsIntersectionCoverage(
@@ -111,7 +113,7 @@ class ModelsIntersectionCoverage(
 
                 val intersectionConstraint = intersection.mergeWithAnd(prover)
 
-                val negatedIntersection = intersectionConstraint.not(prover)
+                val negatedIntersection = prover.fm.booleanFormulaManager.notOptimized(intersectionConstraint)
                 val negIntersectionAssertion = prover.addConstraint(negatedIntersection, true, "ic.switchable.negintersection")
 
                 if (prover.check(checkStatusId()) == Status.UNSAT) {
@@ -160,7 +162,7 @@ class ModelsIntersectionCoverage(
                 logger().trace("Found unachievable value of atom: $assertion")
 
                 val (atom, value) = if (formulaManager.booleanFormulaManager.isNot(assertion))
-                    assertion.not(prover) to formulaManager.booleanFormulaManager.makeFalse()
+                    prover.fm.booleanFormulaManager.notOptimized(assertion) to formulaManager.booleanFormulaManager.makeFalse()
                 else assertion to formulaManager.booleanFormulaManager.makeTrue()
                 onImpossibleAssignmentFound(Assignment(atom, value))
             }

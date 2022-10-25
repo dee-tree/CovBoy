@@ -3,6 +3,7 @@ package com.microsoft.z3.coverage.unsatcore
 import com.sokolov.covboy.coverage.AtomCoverageBase
 import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.coverage.EmptyAtomCoverage
+import com.sokolov.covboy.logger
 import com.sokolov.covboy.prover.Assignment
 import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Status
@@ -10,7 +11,7 @@ import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
 import com.sokolov.covboy.prover.model.ModelAssignments
 import com.sokolov.covboy.smt.isNot
 import com.sokolov.covboy.smt.nand
-import com.sokolov.covboy.smt.not
+import com.sokolov.covboy.smt.notOptimized
 import org.sosy_lab.java_smt.api.BooleanFormula
 
 
@@ -25,10 +26,10 @@ class UnsatCoreBasedCoverageSampler(
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
         while (!isCovered) {
-
             val assertions = buildList {
                 uncoveredAtomsWithAnyValue.first().let { expr ->
-                    prover.addConstraint(expr.asExpr(prover), true, "uc.uncovered.atom").also { add(it) }
+                    if (expr.asExpr(prover) !in prover.formulas)
+                        prover.addConstraint(expr.asExpr(prover), true, "uc.uncovered.atom").also { add(it) }
                 }
             }
 
@@ -68,18 +69,21 @@ class UnsatCoreBasedCoverageSampler(
         val ucAssertions = prover.filterSwitchableConstraints { it.assumption in unsatCore }
 
         if (ucAssertions.size == 1) {
-
+            logger().trace("ucAssertions.size == 1")
             val (atom, value) = ucAssertions.first().let {
-                if (formulaManager.booleanFormulaManager.isNot(it)) it.not(
-                    prover
-                ) to formulaManager.booleanFormulaManager.makeFalse() else it to formulaManager.booleanFormulaManager.makeTrue()
+                if (formulaManager.booleanFormulaManager.isNot(it))
+                    prover.fm.booleanFormulaManager.notOptimized(it) to formulaManager.booleanFormulaManager.makeFalse()
+                else it to formulaManager.booleanFormulaManager.makeTrue()
             }
             onImpossibleAssignmentFound(Assignment(atom, value))
         }
 
         if (ucAssertions.isNotEmpty()) {
+            val ucAssertionsNand = prover.fm.booleanFormulaManager.nand(ucAssertions)
 
-            prover.addConstraint(prover.nand(ucAssertions.map { it }), true, "uc.backtrack")
+            if (ucAssertionsNand !in prover.formulas) {
+                prover.addConstraint(ucAssertionsNand, true, "uc.backtrack")
+            }
 
             ucAssertions.forEach(prover::disableConstraint)
         }
