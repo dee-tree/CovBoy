@@ -43,7 +43,7 @@ abstract class BaseProverEnvironment(
     protected val constraintsStack: Stack<List<Constraint>> = Stack()
     protected val currentLevelConstraints = mutableListOf<Constraint>()
 
-    protected val constraints: List<Constraint>
+    /*protected */val constraints: List<Constraint>
         get() = constraintsStack.fold(emptyList<Constraint>()) { curr, acc -> acc + curr } + currentLevelConstraints
 
     protected val switchableConstraints: List<MutableSwitchableConstraint>
@@ -85,7 +85,7 @@ abstract class BaseProverEnvironment(
             */
             return uc.map { ucExpr ->
                 val enabledSwConstraints = switchableConstraints.filter { it.enabled }
-                enabledSwConstraints.find { it.asFormula == ucExpr }?.assumption ?: ucExpr
+                enabledSwConstraints.find { /*java smt unsat core (princess, smtinterpol, cvc4)*/it.asFormula == ucExpr || it.assumption == ucExpr /*Z3 returns assumption*/ }?.original ?: ucExpr
             }.toSet().toList()
         }
 
@@ -113,10 +113,11 @@ abstract class BaseProverEnvironment(
         }
 
     fun contains(constraint: BooleanFormula, switchable: Boolean, tag: String = ""): Boolean {
-        return constraints.find { it.switchable == switchable &&
-                if (it is SwitchableConstraint)
-                    it.original == constraint && it.tag == tag
-            else it.asFormula == constraint
+        return constraints.find {
+            it.switchable == switchable &&
+                    if (it is SwitchableConstraint)
+                        it.original == constraint && it.tag == tag
+                    else it.asFormula == constraint
         } != null
     }
 
@@ -130,6 +131,11 @@ abstract class BaseProverEnvironment(
 
     fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String = ""): BooleanFormula {
 
+        if (lastCheckAssumptions.isNotEmpty()) {
+            pop()
+            lastCheckAssumptions = emptyList()
+        }
+
         if (contains(formula)) {
             System.err.println("You're trying to add ${if (switchable) "switchable" else "non-switchable"} constraint (tag=$tag) that already added before: $formula")
 
@@ -139,6 +145,7 @@ abstract class BaseProverEnvironment(
                 }
             }
 
+            needCheck()
             return formula
         }
 
@@ -147,6 +154,8 @@ abstract class BaseProverEnvironment(
         } else {
             NonSwitchableConstraint(formula)
         }
+
+        println("Add constraint: $constraint")
 
         delegate.addConstraintCustom(constraint.asFormula)
         currentLevelConstraints.add(constraint)
@@ -170,10 +179,30 @@ abstract class BaseProverEnvironment(
         if (!isCheckNeed && lastCheckAssumptions == assumptions)
             return lastCheckStatus!!
 
+        if (lastCheckAssumptions.isNotEmpty()) {
+            pop()
+            lastCheckAssumptions = emptyList()
+
+        }
+
+        if (assumptions.isNotEmpty())
+            push()
+
         lastCheckAssumptions = assumptions.toList()
 
+        if (solverName != Solvers.Z3 && solverName != Solvers.BOOLECTOR) {
+            assumptions.forEach { assumption ->
+                println("assert assumptions: $assumption")
+                delegate.addConstraintCustom(assumption)
+            }
+        }
+
+
         lastCheckStatus = try {
-            val isUnsat = delegate.isUnsatWithAssumptions(assumptions)
+            val isUnsat = if (solverName == Solvers.Z3 || solverName == Solvers.BOOLECTOR)
+                delegate.isUnsatWithAssumptions(assumptions)
+            else delegate.isUnsat
+
             if (isUnsat) Status.UNSAT else Status.SAT
         } catch (e: SolverException) {
             Status.UNKNOWN
@@ -197,13 +226,13 @@ abstract class BaseProverEnvironment(
     override fun pop() {
         logger().trace("pop: ${constraintsStack.peek()}")
         delegate.pop()
-        currentLevelConstraints.clear()
         currentLevelConstraints.addAll(constraintsStack.pop())
         needCheck()
     }
 
 
     fun disableConstraint(formula: BooleanFormula) {
+        println("Disable constraint: $formula")
         switchableConstraints.find { it.original == formula }?.disable()
             ?: error("It's not possible to disable the assertion which is not added already")
 
@@ -211,6 +240,7 @@ abstract class BaseProverEnvironment(
     }
 
     fun enableConstraint(formula: BooleanFormula) {
+        println("Enable constraint")
         switchableConstraints.find { it.original == formula }?.enable()
             ?: error("It's not possible to enable the assertion which is not added already")
 

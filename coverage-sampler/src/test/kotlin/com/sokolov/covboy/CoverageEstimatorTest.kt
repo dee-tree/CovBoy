@@ -64,9 +64,9 @@ abstract class CoverageEstimatorTest {
 
     companion object {
 
-        fun getInputs(): List<File> = File("input")
-            .listFiles { file: File -> file.isFile && "3190" in file.name }
-            ?.map { it } ?: emptyList()
+        fun getInputs(): List<File> = File("input").walk()
+            .filter { file: File -> file.isFile && "3190" in file.name }
+            .toList()
 
         val excludedSolvers = listOf<Solvers>(
             Solvers.MATHSAT5, // not installed

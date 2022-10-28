@@ -56,6 +56,43 @@ class ProverTest {
     }
 
     @Test
+    fun testSolve2() {
+        val a = prover.fm.booleanFormulaManager.makeVariable("a")
+        val b = prover.fm.booleanFormulaManager.makeVariable("b")
+        val c = prover.fm.booleanFormulaManager.makeVariable("d")
+
+        val orabc = prover.fm.booleanFormulaManager.or(a, b, c)
+        prover.addConstraint(orabc)
+        assertSat { prover.check() }
+        assertContains(prover.formulas, orabc)
+
+        val notabc = prover.fm.booleanFormulaManager.not(prover.fm.booleanFormulaManager.or(a, b, c))
+        prover.addConstraint(notabc, true)
+
+        assertUnsat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertContains(prover.formulas, notabc)
+
+        prover.disableConstraint(notabc)
+
+        assertSat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertNotContains(prover.formulas, notabc)
+
+        prover.addConstraint(a, true)
+        assertSat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertNotContains(prover.formulas, notabc)
+        assertContains(prover.formulas, a)
+
+        prover.enableConstraint(notabc)
+        assertUnsat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertContains(prover.formulas, notabc)
+        assertContains(prover.formulas, a)
+    }
+
+    @Test
     fun testUnsat1() {
         val f = prover.fm.booleanFormulaManager.makeFalse()
         prover.addConstraint(f)
@@ -69,6 +106,44 @@ class ProverTest {
         prover.addConstraint(flse)
         assertUnsat { prover.check() }
     }
+
+    @Test
+    fun testUnsatCore() {
+        val a = prover.fm.booleanFormulaManager.makeVariable("a")
+        val b = prover.fm.booleanFormulaManager.makeVariable("b")
+        val c = prover.fm.booleanFormulaManager.makeVariable("d")
+
+        val orabc = prover.fm.booleanFormulaManager.or(a, b, c)
+        prover.addConstraint(orabc)
+        assertSat { prover.check() }
+        assertContains(prover.formulas, orabc)
+
+        val notabc = prover.fm.booleanFormulaManager.not(prover.fm.booleanFormulaManager.or(a, b, c))
+        prover.addConstraint(notabc, true)
+
+        assertUnsat { prover.check() }
+
+        assertContains(prover.unsatCore, notabc)
+
+        prover.disableConstraint(notabc)
+
+        assertSat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertNotContains(prover.formulas, notabc)
+
+        prover.addConstraint(a, true)
+        assertSat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertNotContains(prover.formulas, notabc)
+        assertContains(prover.formulas, a)
+
+        prover.enableConstraint(notabc)
+        assertUnsat { prover.check() }
+        assertContains(prover.formulas, orabc)
+        assertContains(prover.formulas, notabc)
+        assertContains(prover.formulas, a)
+    }
+
 
     @AfterEach
     fun resetProverState() {

@@ -4,6 +4,7 @@ import java.io.File
 
 // line-based content
 // https://github.com/sosy-lab/java-smt/blob/master/src/org/sosy_lab/java_smt/example/FormulaClassifier.java
+@Deprecated("use z3fromFile")
 fun FormulaManager.readFormulasFromSmtLib(input: File): List<BooleanFormula> {
     val definitions = mutableListOf<String>()
     val formulas = mutableListOf<BooleanFormula>()

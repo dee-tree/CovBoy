@@ -26,8 +26,9 @@ class UnsatCoreBasedCoverageSampler(
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
         while (!isCovered) {
+            logger().trace("Remain uncovered values: $uncoveredValuesCount")
             val assertions = buildList {
-                uncoveredAtomsWithAnyValue.first().let { expr ->
+                uncoveredAtomsWithAnyValue.first().also/*forEach*/ { expr ->
                     if (expr.asExpr(prover) !in prover.formulas)
                         prover.addConstraint(expr.asExpr(prover), true, "uc.uncovered.atom").also { add(it) }
                 }
@@ -66,7 +67,7 @@ class UnsatCoreBasedCoverageSampler(
     private fun backtrackUnsatCore(onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit) {
         val unsatCore = prover.unsatCore
 
-        val ucAssertions = prover.filterSwitchableConstraints { it.assumption in unsatCore }
+        val ucAssertions = prover.filterSwitchableConstraints { it.original in unsatCore }
 
         if (ucAssertions.size == 1) {
             logger().trace("ucAssertions.size == 1")
@@ -82,7 +83,8 @@ class UnsatCoreBasedCoverageSampler(
             val ucAssertionsNand = prover.fm.booleanFormulaManager.nand(ucAssertions)
 
             if (ucAssertionsNand !in prover.formulas) {
-                prover.addConstraint(ucAssertionsNand, true, "uc.backtrack")
+//                prover.addConstraint(ucAssertionsNand, true, "uc.backtrack")
+                prover.addConstraint(ucAssertionsNand, false, "uc.backtrack")
             }
 
             ucAssertions.forEach(prover::disableConstraint)

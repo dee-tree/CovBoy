@@ -1,12 +1,23 @@
 package com.microsoft.z3.coverage.unitpropogation
 
+import com.sokolov.covboy.coverage.AtomCoverageBase
+import com.sokolov.covboy.coverage.CoverageSampler
+import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.prover.model.ModelAssignments
+import org.sosy_lab.java_smt.api.BooleanFormula
+
+
 /*
-class UnitPropagationBasedCoverageSampler(solver: Solver, context: Context) : CoverageSampler(solver, context) {
+class UnitPropagationBasedCoverageSampler(
+    prover: BaseProverEnvironment,
+    coveragePredicates: Collection<BooleanFormula>
+) : CoverageSampler(prover, coveragePredicates) {
 
     override fun computeCoverage(
-        coverModel: (Model) -> Set<AtomCoverageBase>,
-        coverAtom: (atom: BoolExpr, value: BoolExpr) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Assignment<BoolExpr>) -> Unit
+        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
+        coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
+        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
         while (!isCovered) {
 
@@ -33,4 +44,5 @@ class UnitPropagationBasedCoverageSampler(solver: Solver, context: Context) : Co
 
         }
     }
-}*/
+}
+*/

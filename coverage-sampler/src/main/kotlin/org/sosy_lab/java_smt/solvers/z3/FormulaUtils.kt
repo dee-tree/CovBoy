@@ -1,9 +1,12 @@
 package org.sosy_lab.java_smt.solvers.z3
 
+import com.microsoft.z3.Native
+import com.sokolov.covboy.prover.BaseProverEnvironment
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.visitors.FormulaVisitor
 import org.sosy_lab.java_smt.solvers.boolector.getDeclaredMethodRecursively
 import org.sosy_lab.java_smt.solvers.z3.Z3Formula.Z3BooleanFormula
+import java.io.File
 
 fun Formula.isZ3Formula() = this is Z3Formula
 
@@ -45,4 +48,31 @@ private fun Formula.getFunArgs(fm: FormulaManager): List<Formula> {
             p3: BooleanFormula?
         ): List<Formula> = emptyList()
     })
+}
+
+fun BaseProverEnvironment.z3FromFile(file: File) {
+    Native.solverFromFile(z3Context(), z3Solver(), file.absolutePath)
+}
+
+fun BaseProverEnvironment.z3Assertions(): List<Formula> {
+    val assertions = Native.solverGetAssertions(z3Context(), z3Solver())
+
+    Native.astVectorIncRef(z3Context(), assertions)
+
+    try {
+        return List(Native.astVectorSize(z3Context(), assertions)) { i ->
+            val ast = Native.astVectorGet(z3Context(), assertions, i)
+
+//            Native.incRef(z3Context(), ast)
+            z3FormulaCreator().encapsulate(z3FormulaCreator().getFormulaType(ast), ast)
+//            Native.decRef(z3Context(), ast)
+        }
+
+    } catch (e: Exception) {
+        System.err.println(e)
+    } finally {
+        Native.astVectorDecRef(z3Context(), assertions)
+    }
+
+    return emptyList()
 }
