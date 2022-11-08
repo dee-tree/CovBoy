@@ -4,6 +4,7 @@ import com.microsoft.z3.Native
 import com.sokolov.covboy.prover.BaseProverEnvironment
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.visitors.FormulaVisitor
+import org.sosy_lab.java_smt.basicimpl.FunctionDeclarationImpl
 import org.sosy_lab.java_smt.solvers.boolector.getDeclaredMethodRecursively
 import org.sosy_lab.java_smt.solvers.z3.Z3Formula.Z3BooleanFormula
 import java.io.File
@@ -75,4 +76,18 @@ fun BaseProverEnvironment.z3Assertions(): List<Formula> {
     }
 
     return emptyList()
+}
+
+fun FormulaManager.Z3getIntParam(fDecl: FunctionDeclaration<*>, idx: Int): Int {
+    val creator = (this as Z3FormulaManager).formulaCreator
+    fDecl as FunctionDeclarationImpl<*, *>
+
+    return Native.getDeclIntParameter(creator.env, fDecl.solverDeclaration as Long, idx)
+}
+
+fun FormulaManager.getIntParam(fDecl: FunctionDeclaration<*>, idx: Int): Int {
+    return when (this) {
+        is Z3FormulaManager -> Z3getIntParam(fDecl, idx)
+        else -> error("Unknown fm $this")
+    }
 }

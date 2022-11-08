@@ -11,36 +11,32 @@
     <option name="openedFilesInfos">
       <list>
         <OpenedFileInfo>
-          <option name="caretOffset" value="1338" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/test/kotlin/com/sokolov/covboy/CoverageEstimatorTest.kt" />
+          <option name="caretOffset" value="212" />
+          <option name="fileUrl" value="jar://$PROJECT_DIR$/coverage-sampler/build/dependencies/java-smt-3.14.0.jar!/org/sosy_lab/java_smt/api/BitvectorFormulaManager.class" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="4096" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/test/kotlin/com/sokolov/covboy/prover/ProverTest.kt" />
+          <option name="caretOffset" value="0" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/org/sosy_lab/java_smt/solvers/z3/FormulaTransformationUtils.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="6446" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/prover/BaseProverEnvironment.kt" />
+          <option name="caretOffset" value="9062" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/prover/secondary/SecondaryBitvectorFormulaManager.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="1537" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/microsoft/z3/coverage/unsatcore/UnsatCoreBasedCoverageSampler.kt" />
+          <option name="caretOffset" value="24745" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/org/sosy_lab/java_smt/solvers/z3/Z3FormulaTransformer.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="2600" />
-          <option name="fileUrl" value="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.sosy-lab/java-smt/3.14.0/886131a7f51596ca126e0c9d090bef6e92dc4985/java-smt-3.14.0-sources.jar!/org/sosy_lab/java_smt/basicimpl/withAssumptionsWrapper/BasicProverWithAssumptionsWrapper.java" />
+          <option name="caretOffset" value="4463" />
+          <option name="fileUrl" value="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.sosy-lab/java-smt/3.14.0/886131a7f51596ca126e0c9d090bef6e92dc4985/java-smt-3.14.0-sources.jar!/org/sosy_lab/java_smt/basicimpl/AbstractBitvectorFormulaManager.java" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="1774" />
-          <option name="fileUrl" value="jar://$PROJECT_DIR$/coverage-sampler/build/dependencies/java-smt-3.14.0.jar!/org/sosy_lab/java_smt/api/BasicProverEnvironment.class" />
+          <option name="caretOffset" value="2546" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/input/BV/accelerating-node2100.smt2" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="4793" />
-          <option name="fileUrl" value="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.sosy-lab/java-smt/3.14.0/886131a7f51596ca126e0c9d090bef6e92dc4985/java-smt-3.14.0-sources.jar!/org/sosy_lab/java_smt/solvers/princess/PrincessAbstractProver.java" />
-        </OpenedFileInfo>
-        <OpenedFileInfo>
-          <option name="caretOffset" value="1327" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/test/kotlin/com/sokolov/smt/sampler/CoverageSamplerTest.kt" />
+          <option name="caretOffset" value="3382" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/run/SamplerSpawner.kt" />
         </OpenedFileInfo>
       </list>
     </option>

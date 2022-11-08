@@ -1,7 +1,0 @@
-(declare-const a Bool)
-(declare-const b Bool)
-(declare-const c Bool)
-(declare-const d Bool)
-(declare-const e Bool)
-; (a + b + c) and !c and (!a + d + e)
-(assert (and (or a b c) (not c) (or (not a) d e) ))

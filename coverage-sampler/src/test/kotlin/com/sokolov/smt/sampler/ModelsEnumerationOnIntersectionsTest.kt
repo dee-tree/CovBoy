@@ -3,6 +3,7 @@ package com.sokolov.smt.sampler
 import com.microsoft.z3.coverage.intersections.ModelsIntersectionCoverage
 import com.sokolov.covboy.coverage.CoverageSampler
 import com.sokolov.covboy.prover.BaseProverEnvironment
+import org.sosy_lab.java_smt.SolverContextFactory
 
 
 class ModelsEnumerationOnIntersectionsTest : CoverageSamplerTest() {
@@ -13,5 +14,9 @@ class ModelsEnumerationOnIntersectionsTest : CoverageSamplerTest() {
             prover.booleans,
             2
         )
+    }
+
+    override fun provideSolver(): SolverContextFactory.Solvers {
+        return SolverContextFactory.Solvers.BOOLECTOR
     }
 }

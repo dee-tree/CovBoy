@@ -38,6 +38,14 @@ class SecondaryFormulaManager(
         )
     }
 
+    private val _bitvectorFormulaManager: BitvectorFormulaManager by lazy {
+        SecondaryBitvectorFormulaManager(
+            originalFm.bitvectorFormulaManager,
+            delegate.bitvectorFormulaManager,
+            this
+        )
+    }
+
     override fun getBooleanFormulaManager(): BooleanFormulaManager {
         return booleanFormulaManager
     }
@@ -48,6 +56,10 @@ class SecondaryFormulaManager(
 
     override fun getRationalFormulaManager(): RationalFormulaManager {
         return _rationalFormulaManager
+    }
+
+    override fun getBitvectorFormulaManager(): BitvectorFormulaManager {
+        return _bitvectorFormulaManager
     }
 
 

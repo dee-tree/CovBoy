@@ -58,6 +58,12 @@ open class SecondaryProver(
         }.toSet()
     )
 
+    override fun close() {
+        super.close()
+        z3Prover.close()
+        z3Prover.context.close()
+    }
+
     override fun toString(): String {
         return "SecondaryProver($solverName from ${z3Prover.solverName})"
     }

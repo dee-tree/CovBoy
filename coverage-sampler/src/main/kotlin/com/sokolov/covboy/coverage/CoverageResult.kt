@@ -16,12 +16,6 @@ data class CoverageResult(
     val atomsCount: Int
         get() = atomsCoverage.size
 
-    val freeAtoms: List<AtomCoverageBase>
-        get() = emptyList() // TODO: free atoms  //atomsCoverage.filterIsInstance<NonEffectingAtomCoverage>()
-
-    val freeAtomsPortion: Double
-        get() = freeAtoms.size / atomsCoverage.size.toDouble()
-
     fun isEmpty(): Boolean = atomsCoverage.all { it.isEmpty }
 
     fun asStringInfo(): String = """

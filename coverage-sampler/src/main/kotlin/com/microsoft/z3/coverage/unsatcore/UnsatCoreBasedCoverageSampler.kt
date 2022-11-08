@@ -25,8 +25,9 @@ class UnsatCoreBasedCoverageSampler(
         coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
         onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
     ) {
+//        val initialUncoveredValues = uncoveredValuesCount
         while (!isCovered) {
-            logger().trace("Remain uncovered values: $uncoveredValuesCount")
+//            logger().trace("Remain uncovered values: $uncoveredValuesCount / $initialUncoveredValues")
             val assertions = buildList {
                 uncoveredAtomsWithAnyValue.first().also/*forEach*/ { expr ->
                     if (expr.asExpr(prover) !in prover.formulas)
@@ -38,7 +39,7 @@ class UnsatCoreBasedCoverageSampler(
                 Status.SAT -> {
                     val model = BoolModelAssignmentsImpl(prover.model, coveragePredicates, prover)
 
-                    coverModel(model).also { println("covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
+                    coverModel(model)//.also { println("covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
                 }
 
                 Status.UNSAT -> {
@@ -52,7 +53,7 @@ class UnsatCoreBasedCoverageSampler(
                                     coveragePredicates,
                                     prover
                                 )
-                            ).also { println("after backtracking covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
+                            )//.also { println("after backtracking covered atoms: " + it.filter { it !is EmptyAtomCoverage }.size) }
                         }
                     } while (prover.check() == Status.UNSAT)
                     coverModel(BoolModelAssignmentsImpl(prover.model, coveragePredicates, prover))
@@ -70,7 +71,7 @@ class UnsatCoreBasedCoverageSampler(
         val ucAssertions = prover.filterSwitchableConstraints { it.original in unsatCore }
 
         if (ucAssertions.size == 1) {
-            logger().trace("ucAssertions.size == 1")
+            //logger().trace("ucAssertions.size == 1")
             val (atom, value) = ucAssertions.first().let {
                 if (formulaManager.booleanFormulaManager.isNot(it))
                     prover.fm.booleanFormulaManager.notOptimized(it) to formulaManager.booleanFormulaManager.makeFalse()

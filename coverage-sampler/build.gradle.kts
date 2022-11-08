@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization") version "1.6.21"
 }
 
 group = "com.sokolov"
@@ -78,6 +79,7 @@ dependencies {
     runtimeOnly("org.sosy-lab:javasmt-solver-yices2:$yices2Version:libyices2j@so")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 
     // logger
     implementation("org.slf4j:slf4j-api:1.7.32")
@@ -91,6 +93,19 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("org.mockito:mockito-core:4.8.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
+}
+
+val outputsRootDir = File(projectDir, "out/coverage_result")
+
+tasks.register<JavaExec>("compareCoverage") {
+    mainClass.set("com.sokolov.covboy.run.CoverageComparator")
+
+    val outRootDir = outputsRootDir
+    val baseSolver = "Z3"
+
+    classpath(sourceSets["main"].runtimeClasspath)
+
+    args(outRootDir.absolutePath, baseSolver)
 }
 
 tasks.withType<Test> {
@@ -133,4 +148,6 @@ tasks.register<Delete>("cleanDownloadedDependencies") {
 // Use the cleanup task for JavaSMT declared above when cleaning
 tasks.clean {
     dependsOn("cleanDownloadedDependencies")
+
+    delete(file("out"))
 }

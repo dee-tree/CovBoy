@@ -1,6 +1,5 @@
 package com.sokolov.covboy.prover
 
-import com.sokolov.covboy.logger
 import com.sokolov.covboy.smt.isCertainBool
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
@@ -155,8 +154,6 @@ abstract class BaseProverEnvironment(
             NonSwitchableConstraint(formula)
         }
 
-        println("Add constraint: $constraint")
-
         delegate.addConstraintCustom(constraint.asFormula)
         currentLevelConstraints.add(constraint)
 
@@ -192,7 +189,6 @@ abstract class BaseProverEnvironment(
 
         if (solverName != Solvers.Z3 && solverName != Solvers.BOOLECTOR) {
             assumptions.forEach { assumption ->
-                println("assert assumptions: $assumption")
                 delegate.addConstraintCustom(assumption)
             }
         }
@@ -216,7 +212,6 @@ abstract class BaseProverEnvironment(
     }
 
     override fun push() {
-        logger().trace("push: $currentLevelConstraints")
         constraintsStack.push(currentLevelConstraints.toList())
         currentLevelConstraints.clear()
         delegate.push()
@@ -224,7 +219,6 @@ abstract class BaseProverEnvironment(
     }
 
     override fun pop() {
-        logger().trace("pop: ${constraintsStack.peek()}")
         delegate.pop()
         currentLevelConstraints.addAll(constraintsStack.pop())
         needCheck()
@@ -232,7 +226,6 @@ abstract class BaseProverEnvironment(
 
 
     fun disableConstraint(formula: BooleanFormula) {
-        println("Disable constraint: $formula")
         switchableConstraints.find { it.original == formula }?.disable()
             ?: error("It's not possible to disable the assertion which is not added already")
 
@@ -240,7 +233,6 @@ abstract class BaseProverEnvironment(
     }
 
     fun enableConstraint(formula: BooleanFormula) {
-        println("Enable constraint")
         switchableConstraints.find { it.original == formula }?.enable()
             ?: error("It's not possible to enable the assertion which is not added already")
 

@@ -8,13 +8,34 @@ import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.visitors.BooleanFormulaTransformationVisitor
 import org.sosy_lab.java_smt.api.visitors.BooleanFormulaVisitor
 import org.sosy_lab.java_smt.api.visitors.TraversalProcess
+import java.util.stream.Collector
+import java.util.stream.Collectors
 
 class SecondaryBooleanFormulaManager(
     private val originalFm: BooleanFormulaManager,
     private val delegate: BooleanFormulaManager,
 
     secondaryFM: ISecondaryFM
-) : BooleanFormulaManager by delegate, ISecondaryFM by secondaryFM {
+) : BooleanFormulaManager, ISecondaryFM by secondaryFM {
+
+
+    override fun isTrue(bool: BooleanFormula): Boolean {
+        if (areAnySecondaryFormula(bool)) {
+            val originalBool = bool.asOriginal()
+            return isTrue(originalBool)
+        }
+
+        return originalFm.isTrue(bool)
+    }
+
+    override fun isFalse(bool: BooleanFormula): Boolean {
+        if (areAnySecondaryFormula(bool)) {
+            val originalBool = bool.asOriginal()
+            return isFalse(originalBool)
+        }
+
+        return originalFm.isFalse(bool)
+    }
 
     override fun makeTrue(): BooleanFormula {
         return mapper.toSecondary(originalFm.makeTrue())
@@ -178,6 +199,18 @@ class SecondaryBooleanFormulaManager(
         }
 
         return originalFm.toDisjunctionArgs(f, p1)
+    }
+
+    override fun toConjunction(): Collector<BooleanFormula, *, BooleanFormula> {
+        return Collectors.collectingAndThen(Collectors.toList()) { formulas: Collection<BooleanFormula> ->
+            and(formulas.map { it.asOriginal() })
+        }
+    }
+
+    override fun toDisjunction(): Collector<BooleanFormula, *, BooleanFormula> {
+        return Collectors.collectingAndThen(Collectors.toList()) { formulas: Collection<BooleanFormula> ->
+            or(formulas.map { it.asOriginal() })
+        }
     }
 
     fun isNot(formula: BooleanFormula): Boolean {

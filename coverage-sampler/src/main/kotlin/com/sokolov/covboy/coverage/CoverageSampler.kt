@@ -5,6 +5,11 @@ import com.sokolov.covboy.prover.Assignment
 import com.sokolov.covboy.prover.BaseProverEnvironment
 import com.sokolov.covboy.prover.Status
 import com.sokolov.covboy.prover.model.ModelAssignments
+import com.sokolov.covboy.prover.secondary.SecondaryProver
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.FormulaManager
 import kotlin.system.measureTimeMillis
@@ -40,10 +45,19 @@ abstract class CoverageSampler(
             throw IllegalStateException("Formula is ${prover.check()}. No coverage is available!")
         }
 
+        val initialUncoveredValues = uncoveredValuesCount
+        val progressPrinter = GlobalScope.launch {
+            while (true) {
+                println("Remain uncovered values: $uncoveredValuesCount / $initialUncoveredValues")
+                delay(1000)
+            }
+        }
+
         computeCoverage(::cover, ::coverAtom, ::onImpossibleAssignmentFound)
+        progressPrinter.cancel(CancellationException("Coverage collected"))
         println(coverageResult)
         logger().debug("Checks statistics: ${prover.checkCounter}")
-        return coverageResult
+        return if (prover is SecondaryProver) prover.getOriginalCoverage(coverageResult) else coverageResult
     }
 
     protected val isCovered: Boolean
