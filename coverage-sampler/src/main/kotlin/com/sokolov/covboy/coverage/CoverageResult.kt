@@ -36,6 +36,15 @@ data class CoverageResult(
         { it.coverageNumber }
     )
 
+    operator fun minus(other: CoverageResult): Set<Assignment<BooleanFormula>> = buildSet {
+        atomsCoverage.forEach { atomCoverage ->
+            other.atomsCoverage.find { it.expr == atomCoverage.expr }?.let { otherAtomCov ->
+                addAll((atomCoverage.values - otherAtomCov.values).map { Assignment(atomCoverage.expr, it) })
+            } ?: addAll(atomCoverage.values.map { Assignment(atomCoverage.expr, it) })
+
+        }
+    }
+
     fun diff(other: CoverageResult): Set<Assignment<BooleanFormula>> {
         if (atomsCoverage == other.atomsCoverage)
             return emptySet()

@@ -20,8 +20,7 @@ open class Prover(
         context: SolverContext,
         formulaInputFile: File,
     ) : this(delegate, context, emptyList()) {
-        z3FromFile(formulaInputFile)
-        this.currentLevelConstraints.addAll(z3Assertions().map { NonSwitchableConstraint(it as BooleanFormula) })
+        readFromFile(formulaInputFile)
     }
 
     override fun toString(): String = "Prover($solverName)"

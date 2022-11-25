@@ -23,21 +23,21 @@ class SamplerSpawner<T : CoverageSampler>(
         val classpath = System.getProperty("java.class.path")
         val main = "com.sokolov.covboy.run.MainKt"
 
-        getInputFormulaPaths().forEach { input ->
+        val inputs = getInputFormulaPaths()
+        inputs.forEachIndexed { index, input ->
+            logger().info("Collect coverage [$index / ${inputs.size}] on file [$input]")
 
             val thisInputSolvers = solvers.filter {
                 val outFile = getOutFile(input.absolutePath, it)
+                val errorFile = File(outFile.parentFile, outFile.nameWithoutExtension + "-error.json")
 
-                rewriteOldResults || !outFile.exists() || outFile.length() == 0L
+                rewriteOldResults || (!outFile.exists() || outFile.length() == 0L) && (!errorFile.exists() || errorFile.length() == 0L)
             }
 
             val commands = thisInputSolvers
-                .mapNotNull { solver ->
-                val outFile = getOutFile(input.absolutePath, solver)
-
-                if (!rewriteOldResults && outFile.exists() && outFile.length() > 0) {
-                    return@mapNotNull null
-                }
+                .map { solver ->
+                    val outFile = getOutFile(input.absolutePath, solver)
+                    val errorFile = File(outFile.parentFile, outFile.nameWithoutExtension + "-error.json")
 
                 val args = CoverageSamplerRunner.makeMainArgs(
                     solver,
@@ -48,19 +48,24 @@ class SamplerSpawner<T : CoverageSampler>(
 
                 val command = listOf("java", "-classpath", classpath, main) + args
 
-                command
+                command to errorFile
             }
 
             measureTimeMillis {
                 runBlocking {
 
-                    val processes = commands.runProcesses()
+                    val processes = commands.map {
+                        it.first.runInProcess() to it.second
+                    }
 
-                    val processesDef = processes.mapBlocking {
-                        val finished = it.waitFor(timeout.first, timeout.second)
-                        if (!finished) {
-                            logger().warn("Kill process $it on proceeded timeout ($timeout)")
-                            it.destroyForcibly()
+                    val processesDef = processes.map {
+                        async(Dispatchers.IO) {
+                            val finished = it.first.waitFor(timeout.first, timeout.second)
+                            if (!finished) {
+                                logger().warn("Kill process $it on proceeded timeout ($timeout)")
+                                it.first.destroyForcibly()
+                                SamplerCrash(SamplerCrash.Reasons.TIMEOUT, SamplerTimeOutException(timeout).toString()).writeToFile(it.second)
+                            }
                         }
                     }
 
@@ -127,20 +132,3 @@ class SamplerSpawner<T : CoverageSampler>(
 }
 
 fun List<String>.runInProcess(): Process = ProcessBuilder().command(this).inheritIO().start()
-
-fun List<List<String>>.runProcesses(): List<Process> = map { command ->
-    command.runInProcess()
-}
-
-suspend fun <T> List<Process>.mapBlocking(
-    dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    action: (Process) -> T
-): List<Deferred<T>> = coroutineScope {
-    this@mapBlocking.map {
-        async {
-            withContext(dispatcher) {
-                action(it)
-            }
-        }
-    }
-}

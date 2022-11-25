@@ -1,5 +1,6 @@
 package com.sokolov.covboy.prover.secondary
 
+import org.sosy_lab.common.Appender
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.FormulaType.BitvectorType
@@ -14,7 +15,7 @@ class SecondaryFormulaManager(
 
     secondarySolver: Solvers,
     mapper: FormulaMapper
-) : SecondaryFM(mapper, secondarySolver), FormulaManager by delegate {
+) : SecondaryFM(mapper, secondarySolver), FormulaManager /*by delegate*/ {
 
     private val booleanFormulaManager: BooleanFormulaManager = SecondaryBooleanFormulaManager(
         originalFm.booleanFormulaManager,
@@ -64,14 +65,17 @@ class SecondaryFormulaManager(
 
 
     override fun <R> visit(f: Formula, visitor: FormulaVisitor<R>): R {
+        error("VISIT IN FM LOLKA")
         return originalFm.visit(f, visitor)
     }
 
     override fun visitRecursively(f: Formula, visitor: FormulaVisitor<TraversalProcess>) {
+        error("VISIT IN FM LOLKA")
         return originalFm.visitRecursively(f, visitor)
     }
 
     override fun <T : Formula> transformRecursively(f: T, visitor: FormulaTransformationVisitor): T {
+        error("VISIT IN FM LOLKA")
         return originalFm.transformRecursively(f, visitor)
     }
 
@@ -86,6 +90,89 @@ class SecondaryFormulaManager(
             type.isArrayType -> arrayFormulaManager.makeArray(name, type as FormulaType.ArrayFormulaType<*, *>)
             else -> error("Unknown formula type")
         } as T
+    }
+
+    override fun <T : Formula?> makeApplication(p0: FunctionDeclaration<T>, p1: MutableList<out Formula>): T {
+        TODO("Not yet implemented")
+    }
+
+    override fun <T : Formula?> makeApplication(p0: FunctionDeclaration<T>, vararg p1: Formula?): T {
+        TODO("Not yet implemented")
+    }
+
+    override fun getArrayFormulaManager(): ArrayFormulaManager {
+        TODO("Not yet implemented")
+    }
+
+    override fun getFloatingPointFormulaManager(): FloatingPointFormulaManager {
+        TODO("Not yet implemented")
+    }
+
+    override fun getUFManager(): UFManager {
+        TODO("Not yet implemented")
+    }
+
+    override fun getSLFormulaManager(): SLFormulaManager {
+        TODO("Not yet implemented")
+    }
+
+    override fun getQuantifiedFormulaManager(): QuantifiedFormulaManager {
+        TODO("Not yet implemented")
+    }
+
+    override fun getStringFormulaManager(): StringFormulaManager {
+        TODO("Not yet implemented")
+    }
+
+    override fun <T : Formula?> getFormulaType(p0: T): FormulaType<T> {
+        TODO("Not yet implemented")
+    }
+
+    override fun parse(p0: String): BooleanFormula {
+        TODO("Not yet implemented")
+    }
+
+    override fun dumpFormula(f: BooleanFormula): Appender {
+        return if (areSecondaryFormulas(f))
+            delegate.dumpFormula(f)
+        else
+            originalFm.dumpFormula(f)
+    }
+
+    override fun applyTactic(p0: BooleanFormula, p1: Tactic): BooleanFormula {
+        TODO("Not yet implemented")
+    }
+
+    override fun <T : Formula?> simplify(p0: T): T {
+        TODO("Not yet implemented")
+    }
+
+    override fun extractVariables(p0: Formula): MutableMap<String, Formula> {
+        TODO("Not yet implemented")
+    }
+
+    override fun extractVariablesAndUFs(p0: Formula): MutableMap<String, Formula> {
+        TODO("Not yet implemented")
+    }
+
+    override fun <T : Formula?> substitute(p0: T, p1: MutableMap<out Formula, out Formula>): T {
+        TODO("Not yet implemented")
+    }
+
+    override fun translateFrom(p0: BooleanFormula, p1: FormulaManager): BooleanFormula {
+        TODO("Not yet implemented")
+    }
+
+    override fun isValidName(p0: String): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun escape(p0: String): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun unescape(p0: String): String {
+        TODO("Not yet implemented")
     }
 
     override fun <T : Formula> T.asOriginalOrNull(): T? = if (areSecondaryFormulas(this))

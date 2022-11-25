@@ -11,32 +11,36 @@
     <option name="openedFilesInfos">
       <list>
         <OpenedFileInfo>
-          <option name="caretOffset" value="212" />
-          <option name="fileUrl" value="jar://$PROJECT_DIR$/coverage-sampler/build/dependencies/java-smt-3.14.0.jar!/org/sosy_lab/java_smt/api/BitvectorFormulaManager.class" />
+          <option name="caretOffset" value="3882" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/run/SamplerSpawner.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="0" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/org/sosy_lab/java_smt/solvers/z3/FormulaTransformationUtils.kt" />
+          <option name="caretOffset" value="2731" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/run/main.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="9062" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/prover/secondary/SecondaryBitvectorFormulaManager.kt" />
+          <option name="caretOffset" value="1577" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/coverage/CoverageSampler.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="24745" />
+          <option name="caretOffset" value="26587" />
           <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/org/sosy_lab/java_smt/solvers/z3/Z3FormulaTransformer.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="4463" />
-          <option name="fileUrl" value="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.sosy-lab/java-smt/3.14.0/886131a7f51596ca126e0c9d090bef6e92dc4985/java-smt-3.14.0-sources.jar!/org/sosy_lab/java_smt/basicimpl/AbstractBitvectorFormulaManager.java" />
+          <option name="caretOffset" value="39" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/org/sosy_lab/java_smt/basicimpl/FormulaManagerUtils.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="2546" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/input/BV/accelerating-node2100.smt2" />
+          <option name="caretOffset" value="4194" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/prover/secondary/SecondaryFormulaManager.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="3382" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/run/SamplerSpawner.kt" />
+          <option name="caretOffset" value="2043" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/run/CoverageMismatchesFinder.kt" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="502" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/resources/logback.xml" />
         </OpenedFileInfo>
       </list>
     </option>

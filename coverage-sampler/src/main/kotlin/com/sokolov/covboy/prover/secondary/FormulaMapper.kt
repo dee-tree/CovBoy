@@ -22,8 +22,9 @@ class FormulaMapper (
      */
     private val storage = mutableMapOf<Formula, Formula>()
 
-
-
+    fun clear() {
+        storage.clear()
+    }
 
     @Suppress("unchecked_cast")
     fun <T : Formula> toSecondary(original: T): T {

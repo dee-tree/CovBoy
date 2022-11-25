@@ -38,6 +38,8 @@ fun main(args: Array<String>) {
     checkCompatibility(solver, input)
 
     val output = File(args[2])
+    val errorFile = File(output.parentFile, output.nameWithoutExtension + "-error.json")
+
     val coverageProvider = when (args[3]) {
         ModelsIntersectionCoverage::class.simpleName -> IntersectionsCoverageSamplerProvider()
         ModelsEnumerationCoverage::class.simpleName -> EnumerationCoverageSamplerProvider()
@@ -49,7 +51,8 @@ fun main(args: Array<String>) {
         solver,
         coverageProvider,
         input,
-        output
+        output,
+        errorFile
     ).run()
 
 }
@@ -58,19 +61,23 @@ class CoverageSamplerRunner(
     val solver: Solvers,
     samplerProvider: CoverageSamplerProvider,
     val input: File,
-    val output: File
+    val output: File,
+    val error: File
 ) {
 
     private val prover = makeProver(solver, input)
     private val sampler = samplerProvider(prover)
 
     fun run() {
-        val coverage = sampler.computeCoverage()
-
-        output.writeText(Json.encodeToString(CoverageResultWrapper.fromCoverageResult(prover.solverName, coverage)))
-
-        prover.close()
-        prover.context.close()
+        try {
+            val coverage = sampler.computeCoverage()
+            output.writeText(Json.encodeToString(CoverageResultWrapper.fromCoverageResult(prover.solverName, coverage)))
+        } catch (e: Exception) {
+            SamplerCrash(SamplerCrash.Reasons.EXCEPTION, e.toString()).writeToFile(error)
+        } finally {
+            prover.close()
+            prover.context.close()
+        }
     }
 
 
@@ -95,17 +102,20 @@ fun checkCompatibility(solver: Solvers, input: File) {
     if (prover.theories().any { it !in solver.supportedTheories }) {
         System.err.println("Prover $solver does not support ${prover.theories() - solver.supportedTheories} needed theories")
     }
-    require(solver.supportedTheories.containsAll(prover.theories()))
+    val neededTheories = prover.theories()
+    prover.close()
+    prover.context.close()
+    require(solver.supportedTheories.containsAll(neededTheories))
 }
 
-fun checkCompatibility(origin: Solvers, other: Solvers, input: File) {
+/*fun checkCompatibility(origin: Solvers, other: Solvers, input: File) {
     val originProver = makeOriginProver(origin, input)
 
     if (originProver.theories().any { it !in other.supportedTheories }) {
         System.err.println("Prover $other does not support ${originProver.theories() - other.supportedTheories} needed theories")
     }
     require(other.supportedTheories.containsAll(originProver.theories()))
-}
+}*/
 
 fun makeOriginProver(solver: Solvers, input: File): BaseProverEnvironment {
     val shutdownManager = ShutdownManager.create()

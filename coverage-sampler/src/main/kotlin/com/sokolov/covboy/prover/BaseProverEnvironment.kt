@@ -1,14 +1,17 @@
 package com.sokolov.covboy.prover
 
+import com.microsoft.z3.Native
+import com.sokolov.covboy.logger
 import com.sokolov.covboy.smt.isCertainBool
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.solvers.boolector.boolectorUnsatCoreWithAssumptions
 import org.sosy_lab.java_smt.solvers.boolector.isBoolectorFormula
 import org.sosy_lab.java_smt.solvers.cvc4.isCVC4Formula
-import org.sosy_lab.java_smt.solvers.z3.Z3UnsatCore
-import org.sosy_lab.java_smt.solvers.z3.addConstraintCustom
-import org.sosy_lab.java_smt.solvers.z3.isZ3Formula
+import org.sosy_lab.java_smt.solvers.princess.isPrincessFormula
+import org.sosy_lab.java_smt.solvers.smtinterpol.isSmtInterpolFormula
+import org.sosy_lab.java_smt.solvers.z3.*
+import java.io.File
 import java.util.*
 import java.util.concurrent.TimeoutException
 
@@ -58,9 +61,17 @@ abstract class BaseProverEnvironment(
         push()
     }
 
-    fun reset() {
+    open fun reset() {
         while (constraintsStack.isNotEmpty()) {
             pop()
+        }
+
+        currentLevelConstraints.clear()
+        constraintsStack.clear()
+        lastCheckAssumptions = emptyList()
+
+        if (solverName == Solvers.Z3) {
+            Native.solverReset(z3Context(), z3Solver())
         }
     }
 
@@ -84,7 +95,8 @@ abstract class BaseProverEnvironment(
             */
             return uc.map { ucExpr ->
                 val enabledSwConstraints = switchableConstraints.filter { it.enabled }
-                enabledSwConstraints.find { /*java smt unsat core (princess, smtinterpol, cvc4)*/it.asFormula == ucExpr || it.assumption == ucExpr /*Z3 returns assumption*/ }?.original ?: ucExpr
+                enabledSwConstraints.find { /*java smt unsat core (princess, smtinterpol, cvc4)*/it.asFormula == ucExpr || it.assumption == ucExpr /*Z3 returns assumption*/ }?.original
+                    ?: ucExpr
             }.toSet().toList()
         }
 
@@ -128,7 +140,7 @@ abstract class BaseProverEnvironment(
         } != null
     }
 
-    fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String = ""): BooleanFormula {
+    open fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String = ""): BooleanFormula {
 
         if (lastCheckAssumptions.isNotEmpty()) {
             pop()
@@ -136,7 +148,7 @@ abstract class BaseProverEnvironment(
         }
 
         if (contains(formula)) {
-            System.err.println("You're trying to add ${if (switchable) "switchable" else "non-switchable"} constraint (tag=$tag) that already added before: $formula")
+            logger().warn("You're trying to add ${if (switchable) "switchable" else "non-switchable"} constraint (tag=$tag) that already added before: $formula")
 
             if (switchable) {
                 switchableConstraints.find { it.original == formula }?.also { enableConstraint(formula) } ?: run {
@@ -165,7 +177,7 @@ abstract class BaseProverEnvironment(
     /**
      * add hard constraint without ability to disable it
      */
-    override fun addConstraint(f: BooleanFormula): Void? {
+    final override fun addConstraint(f: BooleanFormula): Void? {
         addConstraint(f, false)
         return null
     }
@@ -225,6 +237,13 @@ abstract class BaseProverEnvironment(
     }
 
 
+    override fun close() {
+        currentLevelConstraints.clear()
+        constraintsStack.clear()
+        lastCheckAssumptions = emptyList()
+        delegate.close()
+    }
+
     fun disableConstraint(formula: BooleanFormula) {
         switchableConstraints.find { it.original == formula }?.disable()
             ?: error("It's not possible to disable the assertion which is not added already")
@@ -246,12 +265,28 @@ abstract class BaseProverEnvironment(
         return switchableConstraints.filter(filter).map { it.original }
     }
 
+    open fun readFromFile(file: File): List<Formula> {
+        val formulas: List<Formula>
 
-    fun thisSolverImplFormula(formula: Formula): Boolean {
+        when (solverName) {
+            Solvers.Z3 -> {
+                z3FromFile(file)
+                formulas = z3Assertions()
+                currentLevelConstraints.addAll(formulas.map { NonSwitchableConstraint(it as BooleanFormula) })
+            }
+            else -> TODO("read smtlib2 from file for non-z3 solver")
+        }
+
+        return formulas
+    }
+
+    fun Formula.isSuitable(): Boolean {
         return when (solverName) {
-            Solvers.Z3 -> formula.isZ3Formula()
-            Solvers.CVC4 -> formula.isCVC4Formula()
-            Solvers.BOOLECTOR -> formula.isBoolectorFormula()
+            Solvers.Z3 -> isZ3Formula()
+            Solvers.CVC4 -> isCVC4Formula()
+            Solvers.BOOLECTOR -> isBoolectorFormula()
+            Solvers.PRINCESS -> isPrincessFormula()
+            Solvers.SMTINTERPOL-> isSmtInterpolFormula()
             else -> error("Unsupported solver $solverName")
         }
     }

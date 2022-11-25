@@ -64,10 +64,11 @@ abstract class CoverageSamplerTest {
                 .filter { file: File ->
                     file.isFile
                             && file.extension == "smt2"
+                            && file.nameWithoutExtension == "bench_8490"
                             && "(set-info :status unsat)" !in file.readText()
                 }
                 .toList()
-                .filter { "QF_UFBV_bv_bv_adding.1.prop1_ab_cti_max" in it.name }
+//                .filter { "/home/sokolov/IdeaProjects/CovBoy/coverage-sampler/out/coverage_result/QF_BV/sage/app7/bench_8490" in it.absolutePath }
                 .map { it.absolutePath }
                 .map { Arguments.of(it) }
                 .toTypedArray())

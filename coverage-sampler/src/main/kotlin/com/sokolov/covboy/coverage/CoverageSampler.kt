@@ -55,7 +55,6 @@ abstract class CoverageSampler(
 
         computeCoverage(::cover, ::coverAtom, ::onImpossibleAssignmentFound)
         progressPrinter.cancel(CancellationException("Coverage collected"))
-        println(coverageResult)
         logger().debug("Checks statistics: ${prover.checkCounter}")
         return if (prover is SecondaryProver) prover.getOriginalCoverage(coverageResult) else coverageResult
     }

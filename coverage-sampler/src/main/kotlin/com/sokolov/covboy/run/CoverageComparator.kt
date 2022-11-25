@@ -1,6 +1,7 @@
 package com.sokolov.covboy.run
 
 import com.sokolov.covboy.coverage.CoverageResultWrapper
+import com.sokolov.covboy.coverage.provider.IntersectionsCoverageSamplerProvider
 import com.sokolov.covboy.run.CoverageComparator.CompareResult.Companion.compare
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -50,15 +51,10 @@ class CoverageComparator(val coverageFiles: List<File>) {
         val baseCoverage = coverages.find { it.solver == base } ?: error("Base ($base) coverage not found")
         val others = coverages - baseCoverage
 
-//        println("Compare coverage in ${coverageFiles.first().parentFile.absolutePath}")
-
         val result = others.map { other ->
 
             (baseCoverage to other).compare(coverageFiles.first().parentFile.absoluteFile)
         }
-
-//        println("Compared ${others.size} solvers with base")
-//        println("-".repeat(30))
 
         return result
     }
@@ -74,23 +70,29 @@ class CoverageComparator(val coverageFiles: List<File>) {
         @JvmStatic
         fun main(args: Array<String>) {
             // args[0] - root coverage results dir
-            // args[1] - base solver
-            // args[2] - stop after first failure (true/false)
-            val resultsDir = File(args[0])
-            val baseSolver = Solvers.valueOf(args[1])
-            val fastStop = args[2].toBoolean()
+            // args[1] - root coverage inputs dir
+            // args[2] - base solver
+            // args[3] - stop after first failure - fast stop(true/false)
+            // args[4] - rewrite dumped formulas
+            val inputsDir = File(args[0])
+            val resultsDir = File(args[1])
+            val baseSolver = Solvers.valueOf(args[2])
+            val fastStop = args[3].toBoolean()
+            val rewriteOldResults = args[4].toBoolean()
 
             var totalBenchmarks = 0
             var comparedBenchmarks = 0
             val solversBenchmarks = mutableMapOf<Solvers, Int>()
             val errorCases = mutableMapOf<Solvers, Int>()
 
+            val solversNames = Solvers.values().map { it.name }
             run breaking@{
                 resultsDir.walk()
                     .filter { it.isDirectory }
                     .forEach { covDir ->
-                        val covFiles =
-                            covDir.listFiles { _, _ -> true }?.filter { it.extension == "json" } ?: emptyList()
+                        val covFiles = covDir.listFiles { _, _ -> true }
+                            ?.filter { it.extension == "json" && it.nameWithoutExtension in solversNames }
+                            ?: emptyList()
 
                         val comparator = CoverageComparator(covFiles)
 
@@ -105,13 +107,18 @@ class CoverageComparator(val coverageFiles: List<File>) {
                             }
 
                             if (result.any { it.status == CompareStatus.FAILURE }) {
-                                result.forEach {
+                                result.filter { it.solver != Solvers.PRINCESS }.forEach {
                                     if (it.status == CompareStatus.OK)
                                         println(it.asLines())
                                     else {
                                         println("\u001b[31m" + it.asLines() + "\u001b[0m")
 
                                         errorCases[it.solver] = errorCases.getOrDefault(it.solver, 0) + 1
+
+                                        val inputFile = File(inputsDir, covDir.relativeTo(resultsDir).path + ".smt2")
+
+                                        val diffAnalyzer = CoverageDiffDumper(inputFile, baseSolver, it.solver, IntersectionsCoverageSamplerProvider())
+                                        diffAnalyzer.dumpToFile("cov-mismatch", covDir, rewriteOldResults)
                                     }
                                 }
                                 println()

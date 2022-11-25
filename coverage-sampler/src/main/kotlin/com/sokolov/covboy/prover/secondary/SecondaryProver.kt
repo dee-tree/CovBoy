@@ -34,9 +34,20 @@ open class SecondaryProver(
     )
 
     init {
+        addOriginalConstraints()
+       /* z3Prover.formulas.forEach {
+            addConstraint(mapper.toSecondary(it))
+        }*/
+    }
+
+    fun addOriginalConstraints() {
         z3Prover.formulas.forEach {
             addConstraint(mapper.toSecondary(it))
         }
+    }
+
+    override fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String): BooleanFormula {
+        return super.addConstraint(if (formula.isSuitable()) formula else mapper.toSecondary(formula), switchable, tag)
     }
 
     override val booleans: Set<BooleanFormula>
@@ -58,7 +69,13 @@ open class SecondaryProver(
         }.toSet()
     )
 
+    override fun reset() {
+        mapper.clear()
+        super.reset()
+    }
+
     override fun close() {
+        mapper.clear()
         super.close()
         z3Prover.close()
         z3Prover.context.close()
