@@ -16,7 +16,7 @@ import java.util.stream.Stream
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class ProverTest {
+open class ProverTest {
     @ParameterizedTest
     @MethodSource("provideProverParameters")
     fun testSolve(prover: Prover) {

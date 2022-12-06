@@ -18,6 +18,8 @@ interface ExtProverEnvironment {
     val pushScopesSize: Int
     fun checkSat(assumptions: List<BooleanFormula> = emptyList()): Status
 
+    fun checkSat(vararg assumptions: BooleanFormula): Status = checkSat(assumptions.toList())
+
     fun getModel(): Model
     val modelAssignments: List<Model.ValueAssignment>
 
