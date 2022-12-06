@@ -3,6 +3,7 @@ package com.sokolov.covboy.solvers.provers.secondary
 import com.sokolov.covboy.solvers.formulas.Constraint
 import com.sokolov.covboy.solvers.formulas.SwitchableConstraint
 import com.sokolov.covboy.solvers.provers.ExtProverEnvironment
+import com.sokolov.covboy.solvers.provers.Status
 import org.sosy_lab.java_smt.api.BooleanFormula
 import java.io.File
 import java.util.*
@@ -15,7 +16,7 @@ interface ConstraintStoredProver : ExtProverEnvironment {
 
 abstract class AbstractConstraintStoredProver constructor(
     protected val delegate: ExtProverEnvironment
-) : ConstraintStoredProver, ExtProverEnvironment by delegate  {
+) : ConstraintStoredProver, ExtProverEnvironment by delegate {
     protected val constraintsStack: Stack<List<Constraint>> = Stack()
     protected val currentLevelConstraints = mutableListOf<Constraint>()
 
@@ -27,6 +28,10 @@ abstract class AbstractConstraintStoredProver constructor(
 
     override val assumptions: List<BooleanFormula>
         get() = switchableConstraints.filter { it.enabled }.map { it.assumption }
+
+    override fun checkSat(assumptions: List<BooleanFormula>): Status {
+        return delegate.checkSat(assumptions + this.assumptions)
+    }
 
     override fun addConstraint(constraint: Constraint) {
         delegate.addConstraint(constraint)

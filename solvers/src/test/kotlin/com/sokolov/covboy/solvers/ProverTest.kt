@@ -185,9 +185,11 @@ class ProverTest {
         }
 
         @JvmStatic
-        fun provideProverParameters(): Stream<Arguments> = Stream.of(*((Solvers.values().toList() - Solvers.MATHSAT5 - Solvers.CVC4 - Solvers.PRINCESS - Solvers.YICES2).map {
+        fun provideProverParameters(): Stream<Arguments> = Stream.of(*((Solvers.values()
+            .toList() - Solvers.MATHSAT5 - Solvers.CVC4 - Solvers.PRINCESS - Solvers.YICES2).map {
             makeProver(true, it)
-        } + (Solvers.values().toList() - Solvers.MATHSAT5 - Solvers.CVC4 - Solvers.PRINCESS - Solvers.YICES2).map {
+        } + (Solvers.values()
+            .toList() - Solvers.MATHSAT5 - Solvers.CVC4 - Solvers.PRINCESS - Solvers.YICES2 - Solvers.Z3).map {
             makeProver(false, it)
         }).map {
             Arguments.of(it)

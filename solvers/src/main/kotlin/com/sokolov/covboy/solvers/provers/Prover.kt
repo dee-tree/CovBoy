@@ -14,12 +14,11 @@ import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.ProverEnvironment
 import org.sosy_lab.java_smt.api.SolverContext
 import org.sosy_lab.java_smt.api.getDeepestBooleanExprs
-import java.util.*
 
 open class Prover internal constructor(
     open val delegate: ConstraintStoredProver,
     val context: SolverContext,
-) : ExtProverEnvironment by delegate {
+) : ConstraintStoredProver by delegate {
 
     constructor(delegate: ProverEnvironment, context: SolverContext): this(delegate.wrap(context.solverName), context)
 
@@ -40,36 +39,15 @@ open class Prover internal constructor(
         get() = switchableConstraints.filter { it.enabled }.map { it.original } +
                 constraints.filterIsInstance<NonSwitchableConstraint>().map { it.asFormula }
 
-    val assumptions: List<BooleanFormula>
-        get() = switchableConstraints.filter { it.enabled }.map { it.assumption }
-
-    protected val constraintsStack: Stack<List<Constraint>> = Stack()
-    protected val currentLevelConstraints = mutableListOf<Constraint>()
-
-    /*protected */val constraints: List<Constraint>
-        get() = constraintsStack.fold(emptyList<Constraint>()) { curr, acc -> acc + curr } + currentLevelConstraints
-
-    protected val switchableConstraints: List<MutableSwitchableConstraint>
-        get() = constraints.filterIsInstance<MutableSwitchableConstraint>()
-
-
     // checks optimization via last status remember
     private var lastCheckStatus: Status? = null
     private var isCheckNeed: Boolean = true
-    private var lastCheckAssumptions: List<BooleanFormula> = emptyList()
 
-//    init {
-//        push()
-//    }
 
     override fun reset() {
         while (pushScopesSize > 0) {
             pop()
         }
-
-        currentLevelConstraints.clear()
-        constraintsStack.clear()
-        lastCheckAssumptions = emptyList()
 
         delegate.reset()
     }
@@ -79,20 +57,7 @@ open class Prover internal constructor(
     }
 
     override fun getUnsatCore(): List<BooleanFormula> {
-        val unsatCore = delegate.getUnsatCore()
-
-        val enabledSwConstraints = switchableConstraints.filter { it.enabled }
-
-        /*
-            fix to get only assumptions from unsat core, because sometimes it can return full expression,
-            which was assumed (assumption -> expr. We need - assumption, but can get "assumption -> expr").
-            Reproduced in: Princess
-            */
-        return unsatCore
-        return unsatCore.map { ucExpr ->
-            enabledSwConstraints.find { /*java smt unsat core (princess, smtinterpol, cvc4)*/it.asFormula == ucExpr || it.assumption == ucExpr /*Z3 returns assumption*/ }?.original
-                ?: ucExpr
-        }.toSet().toList()
+        return delegate.getUnsatCore()
     }
 
     fun getUnsatCoreConstraints(): List<Constraint> {
@@ -135,12 +100,6 @@ open class Prover internal constructor(
 
 
     override fun addConstraint(constraint: Constraint) {
-//        if (lastCheckAssumptions.isNotEmpty()) {
-//            pop()
-//            lastCheckAssumptions = emptyList()
-//        }
-
-
         if (constraint in constraints) {
             logger().warn("You're trying to add ${if (constraint.switchable) "switchable" else "non-switchable"} constraint that already added before: $constraint")
 
@@ -155,27 +114,14 @@ open class Prover internal constructor(
         }
 
         delegate.addConstraint(constraint)
-        currentLevelConstraints.add(constraint)
 
         needCheck()
     }
 
 
     override fun checkSat(assumptions: List<BooleanFormula>): Status {
-        val assumptions = (this.assumptions + assumptions).toSet().toList()
-        if (!isCheckNeed && lastCheckAssumptions == assumptions)
+        if (!isCheckNeed)
             return lastCheckStatus!!
-
-
-//        if (lastCheckAssumptions.isNotEmpty()) {
-//            pop()
-//            lastCheckAssumptions = emptyList()
-//        }
-
-//        if (assumptions.isNotEmpty())
-//            push()
-
-        lastCheckAssumptions = assumptions.toList()
 
         lastCheckStatus = delegate.checkSat(assumptions)
 
@@ -186,60 +132,54 @@ open class Prover internal constructor(
 
 
     override fun push() {
-        constraintsStack.push(currentLevelConstraints.toList())
-        currentLevelConstraints.clear()
         delegate.push()
         needCheck()
     }
 
     override fun pop() {
         delegate.pop()
-        currentLevelConstraints.addAll(constraintsStack.pop())
         needCheck()
     }
 
 
     override fun close() {
-        currentLevelConstraints.clear()
-        constraintsStack.clear()
-        lastCheckAssumptions = emptyList()
         delegate.close()
     }
 
     fun disableConstraint(constraint: Constraint) {
-        switchableConstraints.find { it == constraint }?.disable()
+        (switchableConstraints.find { it == constraint } as? MutableSwitchableConstraint)?.disable()
             ?: error("It's not possible to disable the assertion which is not added already")
 
         needCheck()
     }
 
     fun disableConstraint(formula: BooleanFormula) {
-        switchableConstraints.find { it.original == formula }?.disable()
+        (switchableConstraints.find { it.original == formula } as? MutableSwitchableConstraint)?.disable()
             ?: error("It's not possible to disable the assertion which is not added already")
 
         needCheck()
     }
 
     fun enableConstraint(constraint: Constraint) {
-        switchableConstraints.find { it == constraint }?.enable()
+        (switchableConstraints.find { it == constraint } as? MutableSwitchableConstraint)?.enable()
             ?: error("It's not possible to enable the assertion which is not added already")
 
         needCheck()
     }
 
     fun enableConstraint(formula: BooleanFormula) {
-        switchableConstraints.find { it.original == formula }?.enable()
+        (switchableConstraints.find { it.original == formula } as? MutableSwitchableConstraint)?.enable()
             ?: error("It's not possible to enable the assertion which is not added already")
 
         needCheck()
     }
 
-    val enabledSwitchableConstraints: List<BooleanFormula>
-        get() = switchableConstraints.filter { it.enabled }.map { it.original }
+//    val enabledSwitchableConstraints: List<BooleanFormula>
+//        get() = switchableConstraints.filter { it.enabled }.map { it.original }
 
-    fun filterSwitchableConstraints(filter: (SwitchableConstraint) -> Boolean): List<BooleanFormula> {
-        return switchableConstraints.filter(filter).map { it.original }
-    }
+//    fun filterSwitchableConstraints(filter: (SwitchableConstraint) -> Boolean): List<BooleanFormula> {
+//        return switchableConstraints.filter(filter).map { it.original }
+//    }
 
     override fun toString(): String {
         return "Prover($solverName)"
