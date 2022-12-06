@@ -64,7 +64,7 @@ open class Prover internal constructor(
         val unsatCore = getUnsatCore()
         val enabledSwConstraints = switchableConstraints.filter { it.enabled }
         return unsatCore.map { unsatCoreExpr ->
-            enabledSwConstraints.first { it.assumption == unsatCoreExpr || it.asFormula == unsatCoreExpr }
+            enabledSwConstraints.first { it.original == unsatCoreExpr }
         }
     }
 
