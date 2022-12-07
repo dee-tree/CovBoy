@@ -12,6 +12,7 @@ import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.ProverEnvironment
 import org.sosy_lab.java_smt.api.SolverContext
+import org.sosy_lab.java_smt.solvers.smtinterpol.*
 import java.util.stream.Stream
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -19,10 +20,35 @@ import kotlin.test.assertEquals
 open class ProverTest {
     @ParameterizedTest
     @MethodSource("provideProverParameters")
+    fun testSat1(prover: Prover) {
+
+        val tr = prover.fm.booleanFormulaManager.makeBoolean(true)
+        prover.addConstraint(tr.asNonSwitchableConstraint(prover.fm))
+
+        assertSat { prover.checkSat() }
+
+        prover.close()
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideProverParameters")
+    fun testSat2(prover: Prover) {
+
+        val tr = prover.fm.booleanFormulaManager.makeBoolean(true)
+        prover.addConstraint(tr.asSwitchableConstraint(prover.fm))
+
+        assertSat { prover.checkSat() }
+
+        prover.close()
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("provideProverParameters")
     fun testSolve(prover: Prover) {
         val a = prover.fm.booleanFormulaManager.makeVariable("a")
         val b = prover.fm.booleanFormulaManager.makeVariable("b")
-        val ab = prover.fm.booleanFormulaManager.and(a, b).asNonSwitchableConstraint()
+        val ab = prover.fm.booleanFormulaManager.and(a, b).asNonSwitchableConstraint(prover.fm)
 
         prover.addConstraint(ab)
 
@@ -31,7 +57,7 @@ open class ProverTest {
         assertEquals(true, prover.getModel().evaluate(a))
         assertEquals(true, prover.getModel().evaluate(b))
 
-        val aNeg = prover.fm.booleanFormulaManager.not(a).asSwitchableConstraint("a_neg", true, prover.fm)
+        val aNeg = prover.fm.booleanFormulaManager.not(a).asSwitchableConstraint(prover.fm, "a_neg", true)
         prover.addConstraint(aNeg)
 
         assertUnsat { prover.checkSat() }
@@ -62,7 +88,7 @@ open class ProverTest {
         val b = prover.fm.booleanFormulaManager.makeVariable("b")
         val c = prover.fm.booleanFormulaManager.makeVariable("d")
 
-        val orabc = prover.fm.booleanFormulaManager.or(a, b, c).asNonSwitchableConstraint()
+        val orabc = prover.fm.booleanFormulaManager.or(a, b, c).asNonSwitchableConstraint(prover.fm)
         prover.addConstraint(orabc)
         assertSat { prover.checkSat() }
         assertContains(prover.formulas, orabc.asFormula)
@@ -101,7 +127,7 @@ open class ProverTest {
     @ParameterizedTest
     @MethodSource("provideProverParameters")
     fun testUnsat1(prover: Prover) {
-        val f = prover.fm.booleanFormulaManager.makeFalse().asNonSwitchableConstraint()
+        val f = prover.fm.booleanFormulaManager.makeFalse().asNonSwitchableConstraint(prover.fm)
         prover.addConstraint(f)
         assertUnsat { prover.checkSat() }
 
@@ -112,7 +138,7 @@ open class ProverTest {
     @MethodSource("provideProverParameters")
     fun testUnsat2(prover: Prover) {
         val tr = prover.fm.booleanFormulaManager.makeTrue()
-        val flse = prover.fm.booleanFormulaManager.not(tr).asNonSwitchableConstraint()
+        val flse = prover.fm.booleanFormulaManager.not(tr).asNonSwitchableConstraint(prover.fm)
         prover.addConstraint(flse)
         assertUnsat { prover.checkSat() }
 
@@ -122,6 +148,7 @@ open class ProverTest {
     @ParameterizedTest
     @MethodSource("provideProverParameters")
     fun testUnsatCore(prover: Prover) {
+
         assumeTrue(prover.solverName != Solvers.MATHSAT5)
         assumeTrue(prover.solverName != Solvers.YICES2)
 
@@ -129,7 +156,7 @@ open class ProverTest {
         val b = prover.fm.booleanFormulaManager.makeVariable("b")
         val c = prover.fm.booleanFormulaManager.makeVariable("d")
 
-        val orabc = prover.fm.booleanFormulaManager.or(a, b, c).asNonSwitchableConstraint()
+        val orabc = prover.fm.booleanFormulaManager.or(a, b, c).asNonSwitchableConstraint(prover.fm)
         prover.addConstraint(orabc)
         assertSat { prover.checkSat() }
         assertContains(prover.formulas, orabc.asFormula)
@@ -139,7 +166,10 @@ open class ProverTest {
 
         assertUnsat { prover.checkSat() }
 
-        assertContains(prover.getUnsatCore(), notabc.original)
+        assertContains(prover.getUnsatCore(), notabc.track)
+        assertContains(prover.getUnsatCore(), orabc.track)
+        assertContains(prover.getUnsatCoreConstraints(), notabc)
+        assertContains(prover.getUnsatCoreConstraints(), orabc)
 
         prover.disableConstraint(notabc)
 
@@ -165,7 +195,11 @@ open class ProverTest {
     }
 
     companion object {
-        fun makeContext(solver: Solvers): SolverContext = SolverContextFactory.createSolverContext(solver)
+        fun makeContext(solver: Solvers): SolverContext = SolverContextFactory.createSolverContext(solver).also {
+            if (solver == Solvers.SMTINTERPOL) {
+                (it as SmtInterpolSolverContext).smtInterpolAddOption(":produce-unsat-assumptions", true)
+            }
+        }
 
         fun makeProverEnvironment(context: SolverContext): ProverEnvironment = context.newProverEnvironment(
             SolverContext.ProverOptions.GENERATE_MODELS,

@@ -7,7 +7,8 @@ class BoolectorConstraintStoredProver internal constructor(
     private val boolectorProver: BoolectorProver
 ) : AbstractConstraintStoredProver(boolectorProver) {
     override fun getUnsatCore(): List<BooleanFormula> {
-        val enabledConstraints = switchableConstraints.filter { it.enabled }
-        return super.getUnsatCore().map { ucAssumption -> enabledConstraints.first { it.assumption == ucAssumption }.original }
+        return super.getUnsatCore()
+//        val enabledConstraints = switchableConstraints.filter { it.enabled }
+//        return super.getUnsatCore().map { ucAssumption -> enabledConstraints.first { it.assumption == ucAssumption }.original }
     }
 }

@@ -1,48 +1,11 @@
 package org.sosy_lab.java_smt.solvers.boolector
 
-import com.sokolov.covboy.solvers.provers.Prover
-import com.sokolov.covboy.solvers.provers.ExtProverEnvironment
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.ProverEnvironment
 import sun.misc.Unsafe
-import java.lang.invoke.MethodHandles
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-
-/**
- * boolector context
- */
-private val btorField = MethodHandles
-    .privateLookupIn(BoolectorAbstractProver::class.java, MethodHandles.lookup())
-    .findVarHandle(BoolectorAbstractProver::class.java, "btor", Long::class.javaPrimitiveType)
-
-private val boolectorFormulaCreator = MethodHandles
-    .privateLookupIn(BoolectorAbstractProver::class.java, MethodHandles.lookup())
-    .findVarHandle(BoolectorAbstractProver::class.java, "creator", BoolectorFormulaCreator::class.java)
-
-internal fun <T> ExtProverEnvironment.get(getter: BoolectorAbstractProver<*>.() -> T): T {
-    return when (this) {
-        is Prover -> delegate.get(getter)
-        is BoolectorProver -> delegate.get(getter)
-        else -> error("Unexpected solver: ${this::class}")
-    }
-}
-
-internal fun <T> ProverEnvironment.get(getter: BoolectorAbstractProver<*>.() -> T): T {
-    return when (this) {
-        is BoolectorProver -> delegate.get(getter)
-        is Prover -> delegate.get(getter)
-        is BoolectorAbstractProver<*> -> getter()
-        else -> error("Unexpected solver: ${this::class}")
-    }
-}
-
-internal fun ProverEnvironment.btor(): Long {
-    return get { btorField.get(this) as Long }
-}
-
-internal fun ProverEnvironment.boolectorFormulaCreator(): BoolectorFormulaCreator = get { boolectorFormulaCreator.get(this) as BoolectorFormulaCreator }
 
 fun ProverEnvironment.boolectorUnsatCore(): List<BooleanFormula> {
     val f = Unsafe::class.java.getDeclaredField("theUnsafe")

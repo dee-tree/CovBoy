@@ -1,6 +1,7 @@
 package com.sokolov.covboy.solvers.provers.secondary
 
 import com.sokolov.covboy.solvers.formulas.Constraint
+import com.sokolov.covboy.solvers.formulas.NonSwitchableConstraint
 import com.sokolov.covboy.solvers.formulas.SwitchableConstraint
 import com.sokolov.covboy.solvers.provers.ExtProverEnvironment
 import com.sokolov.covboy.solvers.provers.Status
@@ -27,7 +28,7 @@ abstract class AbstractConstraintStoredProver constructor(
         get() = constraintsStack.fold(emptyList<Constraint>()) { curr, acc -> acc + curr } + currentLevelConstraints
 
     override val assumptions: List<BooleanFormula>
-        get() = switchableConstraints.filter { it.enabled }.map { it.assumption }
+        get() = switchableConstraints.filter { it.enabled }.map { it.assumption } + constraints.filterIsInstance<NonSwitchableConstraint>().map { it.track }
 
     override fun checkSat(assumptions: List<BooleanFormula>): Status {
         return delegate.checkSat(assumptions + this.assumptions)

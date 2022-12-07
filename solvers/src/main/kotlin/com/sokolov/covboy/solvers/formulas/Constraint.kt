@@ -9,4 +9,6 @@ abstract class Constraint(original: BooleanFormula) {
     abstract val switchable: Boolean
 
     abstract val enabled: Boolean
+
+    abstract val track: BooleanFormula
 }

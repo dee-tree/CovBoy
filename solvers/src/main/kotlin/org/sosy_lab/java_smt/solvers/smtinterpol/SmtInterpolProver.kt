@@ -1,8 +1,11 @@
 package org.sosy_lab.java_smt.solvers.smtinterpol
 
 import com.sokolov.covboy.solvers.formulas.Constraint
+import com.sokolov.covboy.solvers.formulas.NonSwitchableConstraint
+import com.sokolov.covboy.solvers.formulas.SwitchableConstraint
 import com.sokolov.covboy.solvers.provers.ExtProverEnvironment
 import com.sokolov.covboy.solvers.provers.Status
+import de.uni_freiburg.informatik.ultimate.logic.Script
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.Model
@@ -18,7 +21,7 @@ class SmtInterpolProver private constructor(
     // ProverEnvironment
 
     override fun getUnsatCore(): List<BooleanFormula> {
-        return delegate.unsatCore
+        return delegate.env.unsatAssumptions.map { delegate.smtInterpolFormulaManager().encapsulateBooleanFormula(it) }
     }
 
     override fun unsatCoreOverAssumptions(assumptions: MutableCollection<BooleanFormula>): Optional<List<BooleanFormula>> {
@@ -38,12 +41,13 @@ class SmtInterpolProver private constructor(
     private var lastCheckAssumptions: List<BooleanFormula> = emptyList()
 
     override fun addConstraint(constraint: Constraint) {
-        if (lastCheckAssumptions.isNotEmpty()) {
-            pop()
-            lastCheckAssumptions = emptyList()
+        if (constraint is SwitchableConstraint) {
+            addConstraint(constraint.asFormula)
+        } else {
+            check(constraint is NonSwitchableConstraint)
+            // add in same way to track assertion in unsat cores
+            addConstraint(delegate.mgr.booleanFormulaManager.implication(constraint.track, constraint.asFormula))
         }
-
-        addConstraint(constraint.asFormula)
     }
 
     override fun addConstraintsFromFile(smtFile: File): List<Constraint> {
@@ -51,25 +55,15 @@ class SmtInterpolProver private constructor(
     }
 
     override fun checkSat(assumptions: List<BooleanFormula>): Status {
-
-        if (lastCheckAssumptions.isNotEmpty()) {
-            pop()
-            lastCheckAssumptions = emptyList()
-
-        }
-
-        if (assumptions.isNotEmpty())
-            push()
-
         lastCheckAssumptions = assumptions.toList()
 
-        assumptions.forEach {
-            addConstraint(it)
-        }
-
         return try {
-            val unsat = delegate.isUnsat
-            if (unsat) Status.UNSAT else Status.SAT
+            val status = delegate.env.checkSatAssuming(*assumptions.map { it.smtInterpolTerm() }.toTypedArray())
+            when (status) {
+                Script.LBool.SAT -> Status.SAT
+                Script.LBool.UNSAT -> Status.UNSAT
+                else -> Status.UNKNOWN
+            }
         } catch (e: Exception) {
             Status.UNKNOWN
         }

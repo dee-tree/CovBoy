@@ -7,8 +7,6 @@ class SmtInterpolConstraintStoredProver internal constructor(
     private val smtInterpolProver: SmtInterpolProver
 ) : AbstractConstraintStoredProver(smtInterpolProver) {
     override fun getUnsatCore(): List<BooleanFormula> {
-        val enabledConstraints = switchableConstraints.filter { it.enabled }
         return super.getUnsatCore()
-            .mapNotNull { ucAssumption -> enabledConstraints.find { it.assumption == ucAssumption }?.original }
     }
 }

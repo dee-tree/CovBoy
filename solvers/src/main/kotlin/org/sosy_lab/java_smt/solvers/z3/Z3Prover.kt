@@ -2,8 +2,8 @@ package org.sosy_lab.java_smt.solvers.z3
 
 import com.microsoft.z3.Native
 import com.sokolov.covboy.solvers.formulas.Constraint
-import com.sokolov.covboy.solvers.formulas.NonSwitchableConstraint
 import com.sokolov.covboy.solvers.formulas.SwitchableConstraint
+import com.sokolov.covboy.solvers.formulas.asNonSwitchableConstraint
 import com.sokolov.covboy.solvers.provers.ExtProverEnvironment
 import com.sokolov.covboy.solvers.provers.Status
 import org.sosy_lab.java_smt.api.BooleanFormula
@@ -49,19 +49,20 @@ class Z3Prover private constructor(
         if (constraint is SwitchableConstraint) {
             /*
             here might be:
-            * assertAndTrack(constraint.asFormula, constraint.assumption)
+            * assertAndTrack(constraint.asFormula, constraint.track)
             but assumptions installed and with "assert". Maybe javaSMT adds :named in assert?
              */
             assert(constraint.asFormula)
         } else {
-            assert(constraint.asFormula)
+            // but here we need track
+            assertAndTrack(constraint.asFormula, constraint.track)
         }
     }
 
     override fun addConstraintsFromFile(smtFile: File): List<Constraint> {
         z3FromFile(smtFile)
         val formulas = z3Assertions()
-        return formulas.map { NonSwitchableConstraint(it as BooleanFormula) }
+        return formulas.map { (it as BooleanFormula).asNonSwitchableConstraint(delegate.z3FormulaManager()) }
     }
 
     override fun checkSat(assumptions: List<BooleanFormula>): Status = try {
@@ -96,9 +97,6 @@ class Z3Prover private constructor(
         delegate.close()
     }
 
-    /**
-     * not used - assumptions work and using "assert" (are they :named?)
-     */
     fun assertAndTrack(constraint: BooleanFormula, assumption: Formula) {
         Native.solverAssertAndTrack(z3Context(), z3Solver(), constraint.z3Expr, assumption.z3Expr)
     }

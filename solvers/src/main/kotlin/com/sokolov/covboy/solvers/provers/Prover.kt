@@ -56,15 +56,18 @@ open class Prover internal constructor(
         isCheckNeed = true
     }
 
+    /**
+     * @return track of constraint
+     */
     override fun getUnsatCore(): List<BooleanFormula> {
         return delegate.getUnsatCore()
     }
 
     fun getUnsatCoreConstraints(): List<Constraint> {
         val unsatCore = getUnsatCore()
-        val enabledSwConstraints = switchableConstraints.filter { it.enabled }
-        return unsatCore.map { unsatCoreExpr ->
-            enabledSwConstraints.first { it.original == unsatCoreExpr }
+        val enabledConstraints = constraints.filter { it.enabled }
+        return unsatCore.map { ucTrack ->
+            enabledConstraints.first { it.track == ucTrack }
         }
     }
 
@@ -76,7 +79,7 @@ open class Prover internal constructor(
             formulas.forEach { f ->
                 addAll(f
                     .getDeepestBooleanExprs(context.formulaManager)
-                    .filter { !it.isBooleanLiteral(fm.booleanFormulaManager) }
+                    .filter { !fm.booleanFormulaManager.isBooleanLiteral(it) }
                 )
             }
         }
@@ -173,13 +176,6 @@ open class Prover internal constructor(
 
         needCheck()
     }
-
-//    val enabledSwitchableConstraints: List<BooleanFormula>
-//        get() = switchableConstraints.filter { it.enabled }.map { it.original }
-
-//    fun filterSwitchableConstraints(filter: (SwitchableConstraint) -> Boolean): List<BooleanFormula> {
-//        return switchableConstraints.filter(filter).map { it.original }
-//    }
 
     override fun toString(): String {
         return "Prover($solverName)"

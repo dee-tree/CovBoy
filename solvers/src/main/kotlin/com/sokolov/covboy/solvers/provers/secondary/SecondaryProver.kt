@@ -7,6 +7,7 @@ import com.sokolov.covboy.solvers.provers.Prover
 import com.sokolov.covboy.solvers.provers.secondary.fm.SecondaryFormulaManager
 import com.sokolov.covboy.solvers.provers.wrap.wrap
 import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.ProverEnvironment
 import org.sosy_lab.java_smt.api.SolverContext
@@ -17,9 +18,19 @@ open class SecondaryProver internal constructor(
     delegate: ConstraintStoredProver,
     context: SolverContext,
     val baseProver: Prover,
-    private val mapper: FormulaMapper = FormulaMapper(baseProver.context, baseProver.fm, context, context.formulaManager),
-    delegateFm: FormulaManager = SecondaryFormulaManager(baseProver.fm, context.formulaManager, context.solverName, mapper),
-    ) : Prover(delegate, context) {
+    private val mapper: FormulaMapper = FormulaMapper(
+        baseProver.context,
+        baseProver.fm,
+        context,
+        context.formulaManager
+    ),
+    delegateFm: FormulaManager = SecondaryFormulaManager(
+        baseProver.fm,
+        context.formulaManager,
+        context.solverName,
+        mapper
+    ),
+) : Prover(delegate, context) {
 
     override val fm: FormulaManager = delegateFm
 
@@ -48,7 +59,11 @@ open class SecondaryProver internal constructor(
 
     override fun addConstraint(constraint: Constraint) {
         check(solverName.doesSupportFormula(constraint.asFormula) || baseProver.solverName.doesSupportFormula(constraint.asFormula))
-        super.addConstraint(if (solverName.doesSupportFormula(constraint.asFormula)) constraint else mapper.toSecondary(constraint))
+        super.addConstraint(
+            if (solverName.doesSupportFormula(constraint.asFormula)) constraint else mapper.toSecondary(
+                constraint
+            )
+        )
     }
 
     /*override fun addConstraint(formula: BooleanFormula, switchable: Boolean, tag: String): BooleanFormula {
@@ -67,6 +82,8 @@ open class SecondaryProver internal constructor(
         get() = baseProver.booleans
             .map { mapper.toSecondary(it) }
             .toSet()
+
+    fun <T : Formula> findPrimary(f: T): T? = mapper.findOriginal(f)
 
     // TODO: move out get original coverage
     /*fun getOriginalCoverage(coverageResult: CoverageResult): CoverageResult = coverageResult.copy(

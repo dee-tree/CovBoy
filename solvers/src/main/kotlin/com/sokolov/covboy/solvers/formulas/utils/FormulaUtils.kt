@@ -51,11 +51,17 @@ fun BitvectorFormulaManager.add(args: List<BitvectorFormula>): BitvectorFormula 
     }
 }
 
-fun Formula.isBooleanLiteral(fm: BooleanFormulaManager): Boolean = (this as? BooleanFormula)?.let {
-    fm.isTrue(it) || fm.isFalse(it)
+fun BooleanFormulaManager.isBooleanLiteral(formula: Formula): Boolean = (formula as? BooleanFormula)?.let {
+    isTrue(it) || isFalse(it)
 } ?: false
 
-internal fun BooleanFormulaManager.notOptimized(f: BooleanFormula): BooleanFormula =
+fun BooleanFormulaManager.getBooleanLiteralValue(formula: BooleanFormula): Boolean = when {
+    this.isTrue(formula) -> true
+    this.isFalse(formula) -> false
+    else -> throw IllegalArgumentException("$this is not boolean literal!")
+}
+
+fun BooleanFormulaManager.notOptimized(f: BooleanFormula): BooleanFormula =
     this.visit(f, object : BooleanFormulaVisitor<BooleanFormula> {
 
         private operator fun BooleanFormula.not() = this@notOptimized.not(f)

@@ -1,7 +1,6 @@
 package com.sokolov.covboy.solvers.provers.secondary
 
 import com.sokolov.covboy.solvers.formulas.*
-import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.SolverContext
@@ -35,7 +34,7 @@ class FormulaMapper (
 
     fun toSecondary(constraint: Constraint): Constraint = if (constraint is NonSwitchableConstraint) {
         val fSecondary = toSecondary(constraint.asFormula)
-        fSecondary.asNonSwitchableConstraint()
+        fSecondary.asNonSwitchableConstraint(secondaryFm)
     } else {
         check(constraint is SwitchableConstraint)
         val fSecondary = toSecondary(constraint.original)
@@ -50,7 +49,7 @@ class FormulaMapper (
 
 
     fun findOriginal(secondary: Constraint): Constraint? = if (secondary is NonSwitchableConstraint) {
-        findOriginal(secondary.asFormula)?.asNonSwitchableConstraint()
+        findOriginal(secondary.asFormula)?.asNonSwitchableConstraint(originalFm)
     } else {
         check(secondary is SwitchableConstraint)
         findOriginal(secondary.original)?.let { MutableSwitchableConstraint(it, fm = originalFm) }

@@ -3,7 +3,6 @@ package com.sokolov.covboy.solvers.formulas
 import com.sokolov.covboy.solvers.formulas.utils.implication
 import com.sokolov.covboy.solvers.formulas.utils.uniqId
 import org.sosy_lab.java_smt.api.BooleanFormula
-import org.sosy_lab.java_smt.api.Formula
 import org.sosy_lab.java_smt.api.FormulaManager
 import org.sosy_lab.java_smt.api.FormulaType
 
@@ -16,6 +15,9 @@ abstract class SwitchableConstraint(
     abstract val assumptionId: String
     abstract val assumption: BooleanFormula
 
+    override val track: BooleanFormula
+        get() = assumption
+
     final override val switchable: Boolean = true
 
     override fun toString(): String {
@@ -25,9 +27,9 @@ abstract class SwitchableConstraint(
 
 class MutableSwitchableConstraint(
     original: BooleanFormula,
+    fm: FormulaManager,
     override val tag: String = "",
-    enabled: Boolean = true,
-    fm: FormulaManager
+    enabled: Boolean = true
 ): SwitchableConstraint(original) {
 
     override var enabled: Boolean = enabled
@@ -52,6 +54,6 @@ class MutableSwitchableConstraint(
     override fun hashCode(): Int = original.uniqId.toInt()
 }
 
-fun BooleanFormula.asSwitchableConstraint(tag: String = "", enabled: Boolean = true, fm: FormulaManager): SwitchableConstraint {
-    return MutableSwitchableConstraint(this, tag, enabled, fm)
+fun BooleanFormula.asSwitchableConstraint(fm: FormulaManager, tag: String = "", enabled: Boolean = true): SwitchableConstraint {
+    return MutableSwitchableConstraint(this, fm, tag, enabled)
 }

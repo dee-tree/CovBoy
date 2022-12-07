@@ -1,6 +1,8 @@
 package org.sosy_lab.java_smt.solvers.boolector
 
 import com.sokolov.covboy.solvers.formulas.Constraint
+import com.sokolov.covboy.solvers.formulas.NonSwitchableConstraint
+import com.sokolov.covboy.solvers.formulas.SwitchableConstraint
 import com.sokolov.covboy.solvers.provers.ExtProverEnvironment
 import com.sokolov.covboy.solvers.provers.Status
 import org.sosy_lab.java_smt.api.BooleanFormula
@@ -31,7 +33,19 @@ class BoolectorProver private constructor(
     // ExtProverEnvironment
 
     override fun addConstraint(constraint: Constraint) {
-        delegate.addConstraint(constraint.asFormula)
+        if (constraint is SwitchableConstraint) {
+            delegate.addConstraint(constraint.asFormula)
+        } else {
+            check(constraint is NonSwitchableConstraint)
+
+            // We natively add constraint | track => constraint formula | to track unsat cores for even NonSwitchableConstraint
+            delegate.addConstraint(
+                delegate
+                    .boolectorFormulaManager()
+                    .booleanFormulaManager
+                    .implication(constraint.track, constraint.asFormula)
+            )
+        }
     }
 
     override fun addConstraintsFromFile(smtFile: File): List<Constraint> {
