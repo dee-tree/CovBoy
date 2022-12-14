@@ -2,6 +2,7 @@ package com.sokolov.covboy.run
 
 import com.sokolov.covboy.coverage.CoverageResult
 import com.sokolov.covboy.coverage.provider.CoverageSamplerProvider
+import com.sokolov.covboy.solvers.provers.provider.makeProver
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import org.sosy_lab.java_smt.api.BooleanFormula
 import java.io.File
@@ -12,8 +13,8 @@ class CoverageDiffDumper(
     val otherSolver: Solvers,
     provideSample: CoverageSamplerProvider
 ) {
-    private val baseProver = makeOriginProver(baseSolver, inputFile)
-    private val otherProver = makeOtherProver(otherSolver, baseProver)
+    private val baseProver = makeProver(baseSolver).apply { addConstraintsFromFile(inputFile) }
+    private val otherProver = makeProver(false, otherSolver).apply { addConstraintsFromFile(inputFile) }
 
     val baseSampler = provideSample(baseProver)
     val otherSampler = provideSample(otherProver)
@@ -40,7 +41,7 @@ class CoverageDiffDumper(
         return buildString {
             // asserted atoms
 
-            val assertedFormula = baseProver.fm.booleanFormulaManager.and((firstCov - secondCov).map { it.asExpr(baseProver) })
+            val assertedFormula = baseProver.fm.booleanFormulaManager.and((firstCov - secondCov).map { it.assignmentAsFormula })
 
             baseProver.fm.dumpFormula(baseProver.fm.booleanFormulaManager.and(originalFormula, assertedFormula)).appendTo(this)
 

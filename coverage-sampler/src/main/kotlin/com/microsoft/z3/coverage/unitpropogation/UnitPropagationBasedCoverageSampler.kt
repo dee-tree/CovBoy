@@ -1,12 +1,5 @@
 package com.microsoft.z3.coverage.unitpropogation
 
-import com.sokolov.covboy.coverage.AtomCoverageBase
-import com.sokolov.covboy.coverage.CoverageSampler
-import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.BaseProverEnvironment
-import com.sokolov.covboy.prover.model.ModelAssignments
-import org.sosy_lab.java_smt.api.BooleanFormula
-
 
 /*
 class UnitPropagationBasedCoverageSampler(

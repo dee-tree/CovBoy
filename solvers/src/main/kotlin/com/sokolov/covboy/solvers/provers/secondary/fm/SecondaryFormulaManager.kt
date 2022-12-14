@@ -142,6 +142,11 @@ class SecondaryFormulaManager(
     }
 
     override fun <T : Formula> simplify(f: T): T {
+        if (areAnySecondaryFormula(f)) {
+            val originalF = f.asOriginal()
+            return simplify(originalF)
+        }
+
         return mapper.toSecondary(originalFm.simplify(f))
     }
 

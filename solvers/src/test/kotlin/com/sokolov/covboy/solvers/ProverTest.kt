@@ -3,16 +3,12 @@ package com.sokolov.covboy.solvers
 import com.sokolov.covboy.solvers.formulas.asNonSwitchableConstraint
 import com.sokolov.covboy.solvers.formulas.asSwitchableConstraint
 import com.sokolov.covboy.solvers.provers.Prover
-import com.sokolov.covboy.solvers.provers.secondary.SecondaryProver
+import com.sokolov.covboy.solvers.provers.provider.makeProver
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
-import org.sosy_lab.java_smt.api.ProverEnvironment
-import org.sosy_lab.java_smt.api.SolverContext
-import org.sosy_lab.java_smt.solvers.smtinterpol.*
 import java.util.stream.Stream
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -59,6 +55,7 @@ open class ProverTest {
 
         val aNeg = prover.fm.booleanFormulaManager.not(a).asSwitchableConstraint(prover.fm, "a_neg", true)
         prover.addConstraint(aNeg)
+
 
         assertUnsat { prover.checkSat() }
         assertContains(prover.formulas, aNeg.original)
@@ -195,29 +192,6 @@ open class ProverTest {
     }
 
     companion object {
-        fun makeContext(solver: Solvers): SolverContext = SolverContextFactory.createSolverContext(solver).also {
-            if (solver == Solvers.SMTINTERPOL) {
-                (it as SmtInterpolSolverContext).smtInterpolAddOption(":produce-unsat-assumptions", true)
-            }
-        }
-
-        fun makeProverEnvironment(context: SolverContext): ProverEnvironment = context.newProverEnvironment(
-            SolverContext.ProverOptions.GENERATE_MODELS,
-            SolverContext.ProverOptions.GENERATE_UNSAT_CORE
-        )
-
-        fun makeProver(primary: Boolean, solver: Solvers): Prover {
-            val ctx = makeContext(solver)
-            val proverEnv = makeProverEnvironment(ctx)
-
-            return if (primary) {
-                Prover(proverEnv, ctx)
-            } else {
-                val primaryProver = makeProver(true, Solvers.Z3)
-                SecondaryProver(proverEnv, ctx, primaryProver)
-            }
-        }
-
         @JvmStatic
         fun provideProverParameters(): Stream<Arguments> = Stream.of(*((Solvers.values()
             .toList() - Solvers.MATHSAT5 - Solvers.CVC4 - Solvers.PRINCESS - Solvers.YICES2).map {

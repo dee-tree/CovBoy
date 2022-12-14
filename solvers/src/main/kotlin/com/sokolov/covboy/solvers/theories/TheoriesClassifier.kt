@@ -1,5 +1,6 @@
 package com.sokolov.covboy.solvers.theories
 
+import com.sokolov.covboy.solvers.provers.Prover
 import org.sosy_lab.java_smt.api.*
 import org.sosy_lab.java_smt.api.visitors.FormulaVisitor
 
@@ -140,3 +141,4 @@ class TheoriesClassifier(private val formulas: Collection<Formula>, private val 
 
 fun FormulaManager.theories(formulas: Collection<Formula>): Set<Theories> = TheoriesClassifier(formulas, this).process()
 fun FormulaManager.theories(formula: Formula): Set<Theories> = TheoriesClassifier(listOf(formula), this).process()
+fun Prover.theories(): Set<Theories> = fm.theories(formulas)

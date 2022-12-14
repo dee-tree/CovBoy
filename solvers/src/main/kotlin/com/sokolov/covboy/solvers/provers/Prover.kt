@@ -103,6 +103,7 @@ open class Prover internal constructor(
 
 
     override fun addConstraint(constraint: Constraint) {
+        println("Add constraint: $constraint")
         if (constraint in constraints) {
             logger().warn("You're trying to add ${if (constraint.switchable) "switchable" else "non-switchable"} constraint that already added before: $constraint")
 
@@ -135,11 +136,13 @@ open class Prover internal constructor(
 
 
     override fun push() {
+        println("push")
         delegate.push()
         needCheck()
     }
 
     override fun pop() {
+        println("pop")
         delegate.pop()
         needCheck()
     }
@@ -150,6 +153,7 @@ open class Prover internal constructor(
     }
 
     fun disableConstraint(constraint: Constraint) {
+        println("Disable constraint: $constraint")
         (switchableConstraints.find { it == constraint } as? MutableSwitchableConstraint)?.disable()
             ?: error("It's not possible to disable the assertion which is not added already")
 
@@ -164,6 +168,7 @@ open class Prover internal constructor(
     }
 
     fun enableConstraint(constraint: Constraint) {
+        println("Enable constraint: $constraint")
         (switchableConstraints.find { it == constraint } as? MutableSwitchableConstraint)?.enable()
             ?: error("It's not possible to enable the assertion which is not added already")
 

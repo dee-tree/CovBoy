@@ -1,15 +1,15 @@
 package com.sokolov.smt.sampler
 
-import com.microsoft.z3.coverage.intersections.ModelsIntersectionCoverage
-import com.sokolov.covboy.coverage.CoverageSampler
-import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.coverage.sampler.CoverageSampler
+import com.sokolov.covboy.coverage.sampler.impl.ModelsIntersectionCoverageSampler
+import com.sokolov.covboy.solvers.provers.Prover
 import org.sosy_lab.java_smt.SolverContextFactory
 
 
 class ModelsEnumerationOnIntersectionsTest : CoverageSamplerTest() {
 
-    override fun coverageSampler(prover: BaseProverEnvironment): CoverageSampler {
-        return ModelsIntersectionCoverage(
+    override fun coverageSampler(prover: Prover): CoverageSampler {
+        return ModelsIntersectionCoverageSampler(
             prover,
             prover.booleans,
             2

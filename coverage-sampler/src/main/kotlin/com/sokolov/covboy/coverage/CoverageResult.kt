@@ -1,10 +1,13 @@
 package com.sokolov.covboy.coverage
 
-import com.sokolov.covboy.prover.Assignment
+import com.sokolov.covboy.solvers.provers.Prover
+import com.sokolov.covboy.utils.makeAssignment
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.BooleanFormulaManager
+import org.sosy_lab.java_smt.api.Model.ValueAssignment
 
 data class CoverageResult(
+    private val prover: Prover,
     val atomsCoverage: Set<AtomCoverageBase> = emptySet(),
     val solverCheckCalls: Int = 0,
     val coverageComputationMillis: Long = 0
@@ -36,16 +39,16 @@ data class CoverageResult(
         { it.coverageNumber }
     )
 
-    operator fun minus(other: CoverageResult): Set<Assignment<BooleanFormula>> = buildSet {
+    operator fun minus(other: CoverageResult): Set<ValueAssignment> = buildSet {
         atomsCoverage.forEach { atomCoverage ->
             other.atomsCoverage.find { it.expr == atomCoverage.expr }?.let { otherAtomCov ->
-                addAll((atomCoverage.values - otherAtomCov.values).map { Assignment(atomCoverage.expr, it) })
-            } ?: addAll(atomCoverage.values.map { Assignment(atomCoverage.expr, it) })
+                addAll((atomCoverage.values - otherAtomCov.values).map { (atomCoverage.expr to it).makeAssignment(prover.fm.booleanFormulaManager) })
+            } ?: addAll(atomCoverage.values.map { (atomCoverage.expr to it).makeAssignment(prover.fm.booleanFormulaManager) })
 
         }
     }
 
-    fun diff(other: CoverageResult): Set<Assignment<BooleanFormula>> {
+    fun diff(other: CoverageResult): Set<ValueAssignment> {
         if (atomsCoverage == other.atomsCoverage)
             return emptySet()
 
@@ -53,8 +56,8 @@ data class CoverageResult(
             atomsCoverage.forEach { atomCoverage ->
                 other.atomsCoverage.find { it.expr == atomCoverage.expr }?.let { otherAtomCov ->
                     val difference = (atomCoverage.values + otherAtomCov.values) - atomCoverage.values
-                    addAll(difference.map { Assignment(atomCoverage.expr, it) })
-                } ?: addAll(atomCoverage.values.map { Assignment(atomCoverage.expr, it) })
+                    addAll(difference.map { (atomCoverage.expr to it).makeAssignment(prover.fm.booleanFormulaManager) })
+                } ?: addAll(atomCoverage.values.map { (atomCoverage.expr to it).makeAssignment(prover.fm.booleanFormulaManager) })
             }
         }
     }
@@ -120,16 +123,6 @@ data class AtomCoverage(
 fun FullCoverage(atom: BooleanFormula, formulaManager: BooleanFormulaManager): AtomCoverageBase =
     AtomCoverage(atom, setOf(formulaManager.makeTrue(), formulaManager.makeFalse()))
 
-// Free atom coverage
-//class NonEffectingAtomCoverage(atom: BooleanFormula, formulaManager: BooleanFormulaManager) : AtomCoverageBase(
-//    atom,
-//    setOf(formulaManager.makeTrue(), formulaManager.makeFalse()),
-//    false
-//) {
-//    override fun toString(): String {
-//        return "NonEffectingAtomCoverage(${expr.toShortString()})"
-//    }
-//}
 
 private fun BooleanFormula.toShortString(): String {
     val exprRepresentation = this.toString()

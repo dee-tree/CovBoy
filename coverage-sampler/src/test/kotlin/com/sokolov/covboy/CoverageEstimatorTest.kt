@@ -2,22 +2,16 @@ package com.sokolov.covboy
 
 import com.sokolov.covboy.coverage.CoverageResult
 import com.sokolov.covboy.coverage.CoverageResultWrapper
-import com.sokolov.covboy.prover.BaseProverEnvironment
-import com.sokolov.covboy.prover.Prover
-import com.sokolov.covboy.prover.secondary.SecondaryProver
-import com.sokolov.covboy.solvers.supportedTheories
-import com.sokolov.covboy.solvers.theories
-import org.junit.jupiter.api.Assumptions.assumeTrue
+import com.sokolov.covboy.coverage.provider.CoverageSamplerProvider
+import com.sokolov.covboy.run.checkCompatibility
+import com.sokolov.covboy.solvers.provers.provider.makePrimaryProver
+import com.sokolov.covboy.solvers.provers.provider.makeProver
+import com.sokolov.covboy.solvers.provers.secondary.SecondaryProver
+import com.sokolov.covboy.utils.getPrimaryCoverage
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-import org.sosy_lab.common.ShutdownManager
-import org.sosy_lab.common.configuration.Configuration
-import org.sosy_lab.common.log.LogManager
-import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
-import org.sosy_lab.java_smt.api.SolverContext
-import org.sosy_lab.java_smt.solvers.boolector.createExtendedBoolectorSolverContext
 import java.io.File
 import java.util.stream.Stream
 
@@ -28,10 +22,11 @@ abstract class CoverageEstimatorTest {
     abstract fun test(origin: Solvers, other: Solvers, input: File)
 
     fun test(coverageSampler: CoverageSamplerProvider, origin: Solvers, other: Solvers, input: File) {
-        checkCompatibility(origin, other, input)
+        checkCompatibility(origin, input)
+        checkCompatibility(other, input)
 
-        val originProver = makeOriginProver(origin, input)
-        val otherProver = makeOtherProver(other, originProver)
+        val originProver = makePrimaryProver(origin).apply { addConstraintsFromFile(input) }
+        val otherProver = makeProver(false, other).apply { addConstraintsFromFile(input) }
 
         val baseSampler = coverageSampler(originProver)
         val otherSampler = coverageSampler(otherProver)
@@ -39,7 +34,7 @@ abstract class CoverageEstimatorTest {
             compare(
                 baseSampler.computeCoverage(),
                 otherSampler.computeCoverage()
-                    .let { if (otherProver is SecondaryProver) otherProver.getOriginalCoverage(it) else it }
+                    .let { if (otherProver is SecondaryProver) otherProver.getPrimaryCoverage(it) else it }
             )
         } catch (e: IllegalStateException) {
             System.err.println("Can't check satisfiability")
@@ -52,14 +47,14 @@ abstract class CoverageEstimatorTest {
     fun test(coverageSampler: CoverageSamplerProvider, solver: Solvers, input: File): CoverageResultWrapper {
         checkCompatibility(solver, input)
 
-        val prover = makeProver(solver, input)
+        val prover = makeProver(solver).apply { addConstraintsFromFile(input) }
 
         val sampler = coverageSampler(prover)
 
         try {
             return sampler.computeCoverage().let {
                 if (prover is SecondaryProver)
-                    CoverageResultWrapper.fromCoverageResult(solver, prover.getOriginalCoverage(it))
+                    CoverageResultWrapper.fromCoverageResult(solver, prover.getPrimaryCoverage(it))
                 else CoverageResultWrapper.fromCoverageResult(solver, it)
             }
 
@@ -133,55 +128,4 @@ abstract class CoverageEstimatorTest {
             )
         }
     }
-}
-
-fun checkCompatibility(solver: Solvers, input: File) {
-    val prover = makeOriginProver(Solvers.Z3, input)
-
-    if (prover.theories().any { it !in solver.supportedTheories }) {
-        System.err.println("Prover $solver does not support ${prover.theories() - solver.supportedTheories} needed theories")
-    }
-    assumeTrue(solver.supportedTheories.containsAll(prover.theories()))
-}
-
-fun checkCompatibility(origin: Solvers, other: Solvers, input: File) {
-    val originProver = makeOriginProver(origin, input)
-
-    if (originProver.theories().any { it !in other.supportedTheories }) {
-        System.err.println("Prover $other does not support ${originProver.theories() - other.supportedTheories} needed theories")
-    }
-    assumeTrue(other.supportedTheories.containsAll(originProver.theories()))
-}
-
-fun makeOriginProver(solver: Solvers, input: File): BaseProverEnvironment {
-    val shutdownManager = ShutdownManager.create()
-    val ctx = SolverContextFactory.createSolverContext(
-        Configuration.defaultConfiguration(),
-        LogManager.createNullLogManager(),
-        shutdownManager.notifier, solver
-    )
-    val proverEnv = ctx.newProverEnvironment(
-        SolverContext.ProverOptions.GENERATE_UNSAT_CORE,
-        SolverContext.ProverOptions.GENERATE_MODELS
-    )
-
-    return Prover(proverEnv, ctx, input)
-}
-
-fun makeProver(solver: Solvers, input: File): BaseProverEnvironment {
-    return if (solver == Solvers.Z3) {
-        makeOriginProver(solver, input)
-    } else {
-        makeOtherProver(solver, makeOriginProver(Solvers.Z3, input))
-    }
-}
-
-fun makeOtherProver(solver: Solvers, origin: BaseProverEnvironment): BaseProverEnvironment {
-    val ctx = if (solver == Solvers.BOOLECTOR) createExtendedBoolectorSolverContext()
-    else SolverContextFactory.createSolverContext(solver)
-
-    return SecondaryProver(
-        ctx,
-        origin
-    )
 }

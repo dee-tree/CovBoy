@@ -1,6 +1,7 @@
 package com.sokolov.covboy.run
 
 import com.sokolov.covboy.logger
+import com.sokolov.covboy.solvers.provers.provider.makeProver
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import java.io.File
 
@@ -13,11 +14,11 @@ class CoverageMismatchesFinder(val rootBenchmarksDir: File, val benchmarkPrefix:
         val firstSolver = Solvers.valueOf(partialName[partialName.size - 2])
         val secondSolver = Solvers.valueOf(partialName.last())
 
-        val firstProver = makeProver(firstSolver, benchmark)
-        val secondProver = makeProver(secondSolver, benchmark)
+        val firstProver = makeProver(firstSolver).apply { addConstraintsFromFile(benchmark) }
+        val secondProver = makeProver(secondSolver).apply { addConstraintsFromFile(benchmark) }
 
-        val firstResult = firstProver.check()
-        val secondResult = secondProver.check()
+        val firstResult = firstProver.checkSat()
+        val secondResult = secondProver.checkSat()
 
         val results = setOf(firstResult, secondResult)
 

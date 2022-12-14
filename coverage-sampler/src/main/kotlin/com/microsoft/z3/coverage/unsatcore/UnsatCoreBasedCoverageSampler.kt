@@ -1,21 +1,7 @@
 package com.microsoft.z3.coverage.unsatcore
 
-import com.sokolov.covboy.coverage.AtomCoverageBase
-import com.sokolov.covboy.coverage.CoverageSampler
-import com.sokolov.covboy.coverage.EmptyAtomCoverage
-import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.BaseProverEnvironment
-import com.sokolov.covboy.prover.Status
-import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
-import com.sokolov.covboy.prover.model.ModelAssignments
-import com.sokolov.covboy.smt.isNot
-import com.sokolov.covboy.smt.nand
-import com.sokolov.covboy.smt.notOptimized
-import org.sosy_lab.java_smt.api.BooleanFormula
 
-
-class UnsatCoreBasedCoverageSampler(
+/*class UnsatCoreBasedCoverageSampler(
     prover: BaseProverEnvironment,
     coveragePredicates: Collection<BooleanFormula>
 ) : CoverageSampler(prover, coveragePredicates) {
@@ -29,7 +15,7 @@ class UnsatCoreBasedCoverageSampler(
         while (!isCovered) {
 //            logger().trace("Remain uncovered values: $uncoveredValuesCount / $initialUncoveredValues")
             val assertions = buildList {
-                uncoveredAtomsWithAnyValue.first().also/*forEach*/ { expr ->
+                uncoveredAtomsWithAnyValue.first().also*//*forEach*//* { expr ->
                     if (expr.asExpr(prover) !in prover.formulas)
                         prover.addConstraint(expr.asExpr(prover), true, "uc.uncovered.atom").also { add(it) }
                 }
@@ -91,4 +77,4 @@ class UnsatCoreBasedCoverageSampler(
             ucAssertions.forEach(prover::disableConstraint)
         }
     }
-}
+}*/

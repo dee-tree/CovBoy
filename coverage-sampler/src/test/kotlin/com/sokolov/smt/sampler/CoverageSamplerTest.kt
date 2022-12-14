@@ -1,10 +1,10 @@
 package com.sokolov.smt.sampler
 
 import com.sokolov.covboy.coverage.CoverageResultWrapper
-import com.sokolov.covboy.coverage.CoverageSampler
+import com.sokolov.covboy.coverage.sampler.CoverageSampler
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.makeProver
-import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.solvers.provers.Prover
+import com.sokolov.covboy.solvers.provers.provider.makeProver
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.params.ParameterizedTest
@@ -26,7 +26,7 @@ abstract class CoverageSamplerTest {
 
         logger().info("input file: $inputPath")
 
-        val prover = provideProver(inputPath)
+        val prover = makeProver(provideSolver()).apply { addConstraintsFromFile(File(inputPath)) }
 
         val coverage = coverageSampler(prover).computeCoverage()
         println("coverage value for $inputPath: ${coverage.coverageNumber}")
@@ -48,11 +48,7 @@ abstract class CoverageSamplerTest {
         return File(resultDir, "${solver.name}.json")
     }
 
-    abstract fun coverageSampler(prover: BaseProverEnvironment): CoverageSampler
-
-    private fun provideProver(inputPath: String): BaseProverEnvironment {
-        return makeProver(provideSolver(), File(inputPath))
-    }
+    abstract fun coverageSampler(prover: Prover): CoverageSampler
 
     abstract fun provideSolver(): Solvers
 

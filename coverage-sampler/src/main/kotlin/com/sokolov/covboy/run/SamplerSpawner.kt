@@ -1,11 +1,12 @@
 package com.sokolov.covboy.run
 
-import com.microsoft.z3.coverage.ModelsEnumerationCoverage
-import com.microsoft.z3.coverage.intersections.ModelsIntersectionCoverage
-import com.microsoft.z3.coverage.unsatcore.UnsatCoreBasedCoverageSampler
-import com.sokolov.covboy.coverage.CoverageSampler
+import com.sokolov.covboy.coverage.sampler.CoverageSampler
+import com.sokolov.covboy.coverage.sampler.impl.ModelsIntersectionCoverageSampler
 import com.sokolov.covboy.logger
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import org.sosy_lab.java_smt.SolverContextFactory.Solvers
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -111,9 +112,9 @@ class SamplerSpawner<T : CoverageSampler>(
             val input = File(args[0])
             val output = File(args[1])
             val sampler = when (args[2]) {
-                ModelsIntersectionCoverage::class.simpleName -> ModelsIntersectionCoverage::class.java
-                ModelsEnumerationCoverage::class.simpleName -> ModelsEnumerationCoverage::class.java
-                UnsatCoreBasedCoverageSampler::class.simpleName -> UnsatCoreBasedCoverageSampler::class.java
+                ModelsIntersectionCoverageSampler::class.simpleName -> ModelsIntersectionCoverageSampler::class.java
+//                ModelsEnumerationCoverage::class.simpleName -> ModelsEnumerationCoverage::class.java
+//                UnsatCoreBasedCoverageSampler::class.simpleName -> UnsatCoreBasedCoverageSampler::class.java
                 else -> error("Unknown coverage sampler: ${args[2]}")
             }
             val solvers = if (args.size == 4 && args[3] == "all")

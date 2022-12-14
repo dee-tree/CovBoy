@@ -1,23 +1,23 @@
-package com.microsoft.z3.coverage.intersections
+package com.sokolov.covboy.coverage.sampler.impl
 
-import com.sokolov.covboy.coverage.*
+import com.sokolov.covboy.coverage.AtomCoverageBase
+import com.sokolov.covboy.coverage.EmptyAtomCoverage
+import com.sokolov.covboy.coverage.sampler.CoverageSampler
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.BaseProverEnvironment
-import com.sokolov.covboy.prover.Status
-import com.sokolov.covboy.prover.model.BoolModelAssignmentsImpl
-import com.sokolov.covboy.prover.model.ModelAssignments
-import com.sokolov.covboy.smt.isCertainBool
-import com.sokolov.covboy.smt.isNot
-import com.sokolov.covboy.smt.notOptimized
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.sokolov.covboy.solvers.formulas.Constraint
+import com.sokolov.covboy.solvers.formulas.NonSwitchableConstraint
+import com.sokolov.covboy.solvers.formulas.SwitchableConstraint
+import com.sokolov.covboy.solvers.formulas.asSwitchableConstraint
+import com.sokolov.covboy.solvers.formulas.utils.isNot
+import com.sokolov.covboy.solvers.formulas.utils.notOptimized
+import com.sokolov.covboy.solvers.provers.Prover
+import com.sokolov.covboy.solvers.provers.Status
+import com.sokolov.covboy.utils.makeAssignment
 import org.sosy_lab.java_smt.api.BooleanFormula
+import org.sosy_lab.java_smt.api.Model
 
-class ModelsIntersectionCoverage(
-    prover: BaseProverEnvironment,
+class ModelsIntersectionCoverageSampler(
+    prover: Prover,
     coveragePredicates: Collection<BooleanFormula>,
     val intersectionSize: Int = 2,
     private val nonChangedCoverageIterationsLimit: Int = 1
@@ -30,9 +30,9 @@ class ModelsIntersectionCoverage(
 
 
     override fun computeCoverage(
-        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
-        coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit
+        coverModel: (List<Model.ValueAssignment>) -> Set<AtomCoverageBase>,
+        coverAtom: (assignment: Model.ValueAssignment) -> AtomCoverageBase,
+        onImpossibleAssignmentFound: (assignment: Model.ValueAssignment) -> Unit
     ) {
         prover.push()
         do {
@@ -53,29 +53,32 @@ class ModelsIntersectionCoverage(
                 }
 
                 val rememberedEnabledConstraints = prover
-                    .filterSwitchableConstraints { it.enabled && it.tag.startsWith("ic.switchable") }
+                    .switchableConstraints.filter { it.enabled && it.tag.startsWith("ic.switchable") }
                     .onEach { prover.disableConstraint(it) }
 
-                val semiUncoveredAtomsAsExpr = semiUncoveredAtoms.mergeWithOr(prover)
+                val semiUncoveredAtomsAsExpr = prover.fm.booleanFormulaManager.or(semiUncoveredAtoms.map { it.assignmentAsFormula })
 
-                val assertion = prover.addConstraint(semiUncoveredAtomsAsExpr, true, "ic.switchable.semiuncovered")
+                val constraint = semiUncoveredAtomsAsExpr.asSwitchableConstraint(prover.fm, "ic.switchable.semiuncovered", true)
+                prover.addConstraint(constraint)
 
-                when (prover.check(checkStatusId())) {
+                when (prover.checkSat()) {
                     Status.SAT -> {
-                        val modelCoverage =
-                            coverModel(BoolModelAssignmentsImpl(prover.model, coveragePredicates, prover))
+                        val modelCoverage = coverModel(prover.modelAssignments)
                         coverageChanged = modelCoverage.any { it !is EmptyAtomCoverage }
                     }
                     Status.UNSAT -> {
                         atomsWithSingleUncoveredValue
-                            .map { Assignment(it.key, it.value) }
+                            .map {
+                                (it.key as BooleanFormula to it.value as BooleanFormula)
+                                    .makeAssignment(prover.fm.booleanFormulaManager)
+                            }
                             .forEach(onImpossibleAssignmentFound)
                     }
                     Status.UNKNOWN -> throw IllegalStateException("Unknown result of check")
                 }
 
                 // disable assertion, because it causes a strong distortion (hard assert on the atom!)
-                prover.disableConstraint(assertion)
+                prover.disableConstraint(constraint)
 
                 rememberedEnabledConstraints.forEach(prover::enableConstraint)
 
@@ -100,15 +103,15 @@ class ModelsIntersectionCoverage(
                     break
                 }
 
-                val intersection = currentBoundModels
-                    .fold(
-                        coveragePredicates.map { it to currentBoundModels.first().evaluate(it) }
-                            .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }
-                            .toSet()
-                    ) { acc, currentModel ->
-                        acc.intersect(coveragePredicates.map { it to currentModel.evaluate(it) }
-                            .mapNotNull { if (it.second == null) null else Assignment(it.first, it.second!!) }.toSet())
-                    }.filter { it.value.isCertainBool(formulaManager.booleanFormulaManager) }
+                val getCovPredicatesAssignments = { model: List<Model.ValueAssignment> ->
+                    model.filter { it.key in coveragePredicates }.toSet()
+                }
+
+                val intersection = currentBoundModels.fold(
+                    getCovPredicatesAssignments(currentBoundModels.first())
+                ) { acc, currentModel ->
+                    acc.intersect(getCovPredicatesAssignments(currentModel))
+                }
 
                 if (intersection.isEmpty()) {
 //                    logger().info("No intersection found")
@@ -116,15 +119,15 @@ class ModelsIntersectionCoverage(
                 }
 //                logger().info("Found non-empty intersection consisting of ${intersection.size} atoms")
 
-                val intersectionConstraint = intersection.mergeWithAnd(prover)
+                val intersectionConstraint = prover.fm.booleanFormulaManager.and(intersection.map { it.assignmentAsFormula })
 
                 val negatedIntersection = prover.fm.booleanFormulaManager.notOptimized(intersectionConstraint)
-                val negIntersectionAssertion =
-                    prover.addConstraint(negatedIntersection, true, "ic.switchable.negintersection")
+                val negIntersectionConstraint = negatedIntersection.asSwitchableConstraint(prover.fm, "ic.switchable.negintersection", true)
+                    prover.addConstraint(negIntersectionConstraint)
 
-                if (prover.check(checkStatusId()) == Status.UNSAT) {
+                if (prover.checkSat() == Status.UNSAT) {
                     // conflicted intersection found
-                    resolveConflict(negIntersectionAssertion, onImpossibleAssignmentFound)
+                    resolveConflict(negIntersectionConstraint, onImpossibleAssignmentFound)
                 }
             }
 
@@ -140,22 +143,21 @@ class ModelsIntersectionCoverage(
     }
 
     private fun resolveConflict(
-        assertion: BooleanFormula,
-        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
+        assertion: Constraint,
+        onImpossibleAssignmentFound: (assignment: Model.ValueAssignment) -> Unit,
     ) {
 //        logger().trace("Resolve conflict")
-        val unsatCore = prover.unsatCoreWithAssumptions
-
-        val customAssertionsFromCore = prover.filterSwitchableConstraints { it.original in unsatCore }
+        val unsatCore = prover.getUnsatCoreConstraints()
 
         // if only custom assertions conflict
-        if (customAssertionsFromCore.size != 1 && unsatCore.all { it in customAssertionsFromCore }) {
+        if (unsatCore.size > 1 && unsatCore.all { it is SwitchableConstraint }) {
+//        if (customAssertionsFromCore.size != 1 && unsatCore.all { it in customAssertionsFromCore }) {
 //            logger().info("Assertions conflict: custom assertions")
 
-            prover.filterSwitchableConstraints {
+            prover.switchableConstraints.filter {
                 it.tag.startsWith("ic.switchable")
-                        && it.original !in customAssertionsFromCore
-                        && it.original != assertion
+                        && it !in unsatCore
+                        && it != assertion
             }.forEach(prover::disableConstraint)
 
         } else {
@@ -163,29 +165,29 @@ class ModelsIntersectionCoverage(
 //            logger().info("Assertions conflict: with original formula. Disable the assertion")
 //            logger().trace("The assertion disabled: $assertion")
 
-            // TODO: if it's 1, then disable all assertions and check(). if sat - impossible assignment found
-            if (customAssertionsFromCore.size == 1) {
+            // conflict with non-switchable constraint found
+            if (unsatCore.any { it is NonSwitchableConstraint }) {
 
-                checkOnNonSwitchableConflict(customAssertionsFromCore.first()) {
+                checkOnNonSwitchableConflict(unsatCore.first()) {
 //                    logger().trace("Found unachievable value of atom: $assertion")
 
-                    val (atom, value) = if (formulaManager.booleanFormulaManager.isNot(assertion))
-                        prover.fm.booleanFormulaManager.notOptimized(assertion) to formulaManager.booleanFormulaManager.makeFalse()
-                    else assertion to formulaManager.booleanFormulaManager.makeTrue()
-                    onImpossibleAssignmentFound(Assignment(atom, value))
+                    val expr = if (assertion is SwitchableConstraint) assertion.original else assertion.asFormula
+                    val (atom, value) = if (formulaManager.booleanFormulaManager.isNot(expr))
+                        prover.fm.booleanFormulaManager.notOptimized(expr) to formulaManager.booleanFormulaManager.makeFalse()
+                    else expr to formulaManager.booleanFormulaManager.makeTrue()
+                    onImpossibleAssignmentFound((atom to value).makeAssignment(prover.fm.booleanFormulaManager))
                 }
             }
             prover.disableConstraint(assertion)
         }
     }
 
-    fun checkOnNonSwitchableConflict(f: BooleanFormula, onOnlyNonSwitchableConflict: () -> Unit) {
-        val enabledConstraints = prover.enabledSwitchableConstraints - f
+    fun checkOnNonSwitchableConflict(f: Constraint, onOnlyNonSwitchableConflict: () -> Unit) {
+        val enabledConstraints = prover.switchableConstraints.filter { it.enabled } - f
         enabledConstraints.forEach(prover::disableConstraint)
 
-        assert(f in prover.formulas)
-        when (prover.check()) {
-            Status.UNSAT -> { prover.disableConstraint(f); if(prover.check() == Status.SAT) onOnlyNonSwitchableConflict() }
+        when (prover.checkSat()) {
+            Status.UNSAT -> { prover.disableConstraint(f); if(prover.checkSat() == Status.SAT) onOnlyNonSwitchableConflict() }
             Status.UNKNOWN -> System.err.println("Unknown result in NonSwitchable formulas check()")
         }
 

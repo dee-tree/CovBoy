@@ -43,6 +43,7 @@ val princessVersion = "2021-11-15"
 
 dependencies {
     // java SMT
+    api("org.sosy-lab:java-smt:$javasmtVersion")
     implementation("org.sosy-lab:java-smt:$javasmtVersion")
 
     // Z3
@@ -85,7 +86,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-    implementation(fileTree("dir" to "build/dependencies", "include" to "*.jar"))
+    api(fileTree("dir" to "build/dependencies", "include" to "*.jar"))
 
     testImplementation(kotlin("test"))
     testImplementation("org.mockito:mockito-core:4.8.0")

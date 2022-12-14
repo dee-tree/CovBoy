@@ -3,6 +3,7 @@ package com.sokolov.covboy.solvers.formulas.utils
 import com.sokolov.covboy.solvers.provers.secondary.fm.SecondaryBooleanFormulaManager
 import org.sosy_lab.java_smt.SolverContextFactory
 import org.sosy_lab.java_smt.api.*
+import org.sosy_lab.java_smt.api.Model.ValueAssignment
 import org.sosy_lab.java_smt.api.visitors.BooleanFormulaVisitor
 import org.sosy_lab.java_smt.solvers.boolector.isBoolectorFormula
 import org.sosy_lab.java_smt.solvers.boolector.nativeBoolectorTerm
@@ -102,7 +103,7 @@ fun BooleanFormulaManager.notOptimized(f: BooleanFormula): BooleanFormula =
             !atom!!
     })
 
-internal fun BooleanFormulaManager.isNot(a: BooleanFormula): Boolean {
+fun BooleanFormulaManager.isNot(a: BooleanFormula): Boolean {
     return if (this is SecondaryBooleanFormulaManager) (this as SecondaryBooleanFormulaManager).isNot(a)
     else isNotVisit(a)
 }
@@ -150,4 +151,8 @@ fun SolverContextFactory.Solvers.doesSupportFormula(formula: Formula): Boolean {
         SolverContextFactory.Solvers.PRINCESS -> formula.isPrincessFormula()
         else -> error("Unsupported solver $this")
     }
+}
+
+fun ValueAssignment.asFormula(fm: FormulaManager): BooleanFormula {
+    return fm.booleanFormulaManager.equivalence(key as BooleanFormula, valueAsFormula as BooleanFormula)
 }

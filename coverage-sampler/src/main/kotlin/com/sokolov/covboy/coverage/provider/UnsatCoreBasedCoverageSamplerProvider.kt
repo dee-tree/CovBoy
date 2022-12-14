@@ -1,12 +1,11 @@
 package com.sokolov.covboy.coverage.provider
 
-import com.microsoft.z3.coverage.unsatcore.UnsatCoreBasedCoverageSampler
-import com.sokolov.covboy.coverage.CoverageSampler
-import com.sokolov.covboy.prover.BaseProverEnvironment
+import com.sokolov.covboy.coverage.sampler.CoverageSampler
+import com.sokolov.covboy.solvers.provers.Prover
 
 class UnsatCoreBasedCoverageSamplerProvider : CoverageSamplerProvider() {
-    override fun invoke(prover: BaseProverEnvironment): CoverageSampler = UnsatCoreBasedCoverageSampler(
+    override fun invoke(prover: Prover): CoverageSampler = TODO()/*UnsatCoreBasedCoverageSampler(
         prover,
         prover.booleans
-    )
+    )*/
 }

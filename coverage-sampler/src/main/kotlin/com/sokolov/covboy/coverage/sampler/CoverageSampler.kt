@@ -1,21 +1,22 @@
-package com.sokolov.covboy.coverage
+package com.sokolov.covboy.coverage.sampler
 
+import com.sokolov.covboy.coverage.*
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.prover.Assignment
-import com.sokolov.covboy.prover.BaseProverEnvironment
-import com.sokolov.covboy.prover.Status
-import com.sokolov.covboy.prover.model.ModelAssignments
-import com.sokolov.covboy.prover.secondary.SecondaryProver
+import com.sokolov.covboy.solvers.provers.Prover
+import com.sokolov.covboy.solvers.provers.Status
+import com.sokolov.covboy.solvers.provers.secondary.SecondaryProver
+import com.sokolov.covboy.utils.getPrimaryCoverage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.sosy_lab.java_smt.api.BooleanFormula
 import org.sosy_lab.java_smt.api.FormulaManager
+import org.sosy_lab.java_smt.api.Model
 import kotlin.system.measureTimeMillis
 
 abstract class CoverageSampler(
-    protected val prover: BaseProverEnvironment,
+    protected val prover: Prover,
     coveragePredicates: Collection<BooleanFormula>
 ) {
 
@@ -26,7 +27,7 @@ abstract class CoverageSampler(
 
     private val coverageEvaluator = CoverageEvaluator(this.coveragePredicates, formulaManager.booleanFormulaManager)
 
-    private var coverageResult: CoverageResult = CoverageResult(emptySet(), 0, 0)
+    private var coverageResult: CoverageResult = CoverageResult(prover, emptySet(), 0, 0)
 
     protected val modelsEnumerator = ModelsEnumerator(prover)
 
@@ -34,15 +35,16 @@ abstract class CoverageSampler(
         get() = coverageEvaluator.uncoveredValuesCount
 
     protected abstract fun computeCoverage(
-        coverModel: (ModelAssignments<BooleanFormula>) -> Set<AtomCoverageBase>,
-        coverAtom: (assignment: Assignment<BooleanFormula>) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Assignment<BooleanFormula>) -> Unit,
+        coverModel: (List<Model.ValueAssignment>) -> Set<AtomCoverageBase>,
+        coverAtom: (assignment: Model.ValueAssignment) -> AtomCoverageBase,
+        onImpossibleAssignmentFound: (assignment: Model.ValueAssignment) -> Unit,
     )
 
     fun computeCoverage(): CoverageResult {
-        if (prover.check() != Status.SAT) {
-            System.err.println("Formula is ${prover.check()}. No coverage is available!")
-            throw IllegalStateException("Formula is ${prover.check()}. No coverage is available!")
+        val checkStatus = prover.checkSat()
+        if (checkStatus != Status.SAT) {
+            System.err.println("Formula is $checkStatus. No coverage is available!")
+            throw IllegalStateException("Formula is $checkStatus. No coverage is available!")
         }
 
         val initialUncoveredValues = uncoveredValuesCount
@@ -56,22 +58,22 @@ abstract class CoverageSampler(
         computeCoverage(::cover, ::coverAtom, ::onImpossibleAssignmentFound)
         progressPrinter.cancel(CancellationException("Coverage collected"))
         logger().debug("Checks statistics: ${prover.checkCounter}")
-        return if (prover is SecondaryProver) prover.getOriginalCoverage(coverageResult) else coverageResult
+        return if (prover is SecondaryProver) prover.getPrimaryCoverage(coverageResult) else coverageResult
     }
 
     protected val isCovered: Boolean
         get() = coverageEvaluator.isCovered
 
-    protected val atomsWithSingleUncoveredValue: Map<BooleanFormula, BooleanFormula>
+    protected val atomsWithSingleUncoveredValue: List<Model.ValueAssignment>
         get() = coverageEvaluator.booleansWithSingleUncoveredValue
 
-    protected val uncoveredAtomsWithAnyValue: Set<Assignment<BooleanFormula>>
+    protected val uncoveredAtomsWithAnyValue: Set<Model.ValueAssignment>
         get() = coverageEvaluator.uncoveredBooleansWithAnyValue
 
-    protected val firstSemiCoveredAtom: Assignment<BooleanFormula>?
+    protected val firstSemiCoveredAtom: Model.ValueAssignment?
         get() = coverageEvaluator.firstSemiCoveredAtom()
 
-    private fun cover(model: ModelAssignments<BooleanFormula>): Set<AtomCoverageBase> {
+    private fun cover(model: List<Model.ValueAssignment>): Set<AtomCoverageBase> {
         val modelCoverage: Set<AtomCoverageBase>
 
         val modelCoverageMillis = measureTimeMillis {
@@ -85,11 +87,12 @@ abstract class CoverageSampler(
         return modelCoverage
     }
 
-    private fun coverAtom(assignment: Assignment<BooleanFormula>): AtomCoverageBase {
+    private fun coverAtom(assignment: Model.ValueAssignment): AtomCoverageBase {
         val atomCoverage: AtomCoverageBase
 
-        val atomCoverageMillis =
-            measureTimeMillis { atomCoverage = coverageEvaluator.coverAtom(assignment.expr, assignment.value) }
+        val atomCoverageMillis = measureTimeMillis {
+            atomCoverage = coverageEvaluator.coverAtom(assignment.key as BooleanFormula, assignment.valueAsFormula as BooleanFormula)
+        }
 
         coverageResult = coverageResult.copy(
             atomsCoverage = (coverageResult.atomsCoverage to setOf(atomCoverage)).merge(),
@@ -99,14 +102,14 @@ abstract class CoverageSampler(
         return atomCoverage
     }
 
-    private fun onImpossibleAssignmentFound(assignment: Assignment<BooleanFormula>) {
+    private fun onImpossibleAssignmentFound(assignment: Model.ValueAssignment) {
         val atomCoverage: AtomCoverageBase
         val atomCoverageMillis = measureTimeMillis {
             atomCoverage = coverageEvaluator.excludeFromCoverageArea(assignment)
         }
     }
 
-    protected fun ModelsEnumerator.take(count: Int): List<ModelAssignments<BooleanFormula>> =
+    protected fun ModelsEnumerator.take(count: Int): List<List<Model.ValueAssignment>> =
         this.take(coveragePredicates, count)
 
 }
