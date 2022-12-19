@@ -20,7 +20,7 @@
 <!--    warn -->
 <!--    error -->
 <!--    off -->
-    <root level="trace">
+    <root level="off">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>

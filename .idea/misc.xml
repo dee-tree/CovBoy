@@ -15,10 +15,6 @@
           <option name="fileUrl" value="file://$PROJECT_DIR$/solvers/src/main/kotlin/org/sosy_lab/java_smt/solvers/z3/UnsatCore.kt" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="1477" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/solvers/src/test/kotlin/com/sokolov/covboy/solvers/ProverTest.kt" />
-        </OpenedFileInfo>
-        <OpenedFileInfo>
           <option name="caretOffset" value="6386" />
           <option name="fileUrl" value="file://$PROJECT_DIR$/coverage-sampler/src/main/kotlin/com/sokolov/covboy/prover/BaseProverEnvironment.kt" />
         </OpenedFileInfo>
@@ -37,6 +33,10 @@
         <OpenedFileInfo>
           <option name="caretOffset" value="853" />
           <option name="fileUrl" value="file://$PROJECT_DIR$/solvers/src/main/kotlin/org/sosy_lab/java_smt/solvers/z3/Z3Prover.kt" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="1961" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/solvers/src/test/kotlin/com/sokolov/covboy/solvers/ProverTest.kt" />
         </OpenedFileInfo>
       </list>
     </option>

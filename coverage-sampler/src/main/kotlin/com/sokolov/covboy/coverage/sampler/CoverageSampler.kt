@@ -1,48 +1,45 @@
 package com.sokolov.covboy.coverage.sampler
 
-import com.sokolov.covboy.coverage.*
-import com.sokolov.covboy.logger
-import com.sokolov.covboy.solvers.provers.Prover
-import com.sokolov.covboy.solvers.provers.Status
-import com.sokolov.covboy.solvers.provers.secondary.SecondaryProver
-import com.sokolov.covboy.utils.getPrimaryCoverage
+import com.sokolov.covboy.coverage.FormulaCoverage
+import com.sokolov.covboy.coverage.predicate.CoveragePredicate
+import com.sokolov.covboy.coverage.toCoverage
+import com.sokolov.covboy.utils.evalOrNull
+import com.sokolov.covboy.utils.logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.sosy_lab.java_smt.api.BooleanFormula
-import org.sosy_lab.java_smt.api.FormulaManager
-import org.sosy_lab.java_smt.api.Model
-import kotlin.system.measureTimeMillis
+import org.ksmt.KContext
+import org.ksmt.expr.KEqExpr
+import org.ksmt.expr.KExpr
+import org.ksmt.solver.KModel
+import org.ksmt.solver.KSolver
+import org.ksmt.solver.KSolverStatus
+import org.ksmt.sort.KSort
 
-abstract class CoverageSampler(
-    protected val prover: Prover,
-    coveragePredicates: Collection<BooleanFormula>
-) {
+abstract class CoverageSampler<T : KSort> constructor(
+    protected val prover: KSolver<*>,
+    protected val ctx: KContext,
+    exprPredicates: Collection<KExpr<T>>,
+    exprToPredicate: (KExpr<T>) -> CoveragePredicate<KExpr<T>, T>
+) : AutoCloseable {
 
-    protected val coveragePredicates: Set<BooleanFormula> = coveragePredicates.toSet()
+    protected val predicates = buildMap {
+        exprPredicates.forEach { expr ->
+            put(expr, exprToPredicate(expr).toMutable())
+        }
+    }
 
-    protected val formulaManager: FormulaManager
-        get() = prover.fm
+    protected val uncoveredValuesCount: Int
+        get() = predicates.values.count { !it.isCovered }
 
-    private val coverageEvaluator = CoverageEvaluator(this.coveragePredicates, formulaManager.booleanFormulaManager)
+    protected abstract fun cover()
 
-    private var coverageResult: CoverageResult = CoverageResult(prover, emptySet(), 0, 0)
+    fun computeCoverage(): FormulaCoverage<KExpr<T>, T> {
+        prover.push()
 
-    protected val modelsEnumerator = ModelsEnumerator(prover)
-
-    protected val uncoveredValuesCount: Double
-        get() = coverageEvaluator.uncoveredValuesCount
-
-    protected abstract fun computeCoverage(
-        coverModel: (List<Model.ValueAssignment>) -> Set<AtomCoverageBase>,
-        coverAtom: (assignment: Model.ValueAssignment) -> AtomCoverageBase,
-        onImpossibleAssignmentFound: (assignment: Model.ValueAssignment) -> Unit,
-    )
-
-    fun computeCoverage(): CoverageResult {
-        val checkStatus = prover.checkSat()
-        if (checkStatus != Status.SAT) {
+        val checkStatus = prover.check()
+        if (checkStatus != KSolverStatus.SAT) {
             System.err.println("Formula is $checkStatus. No coverage is available!")
             throw IllegalStateException("Formula is $checkStatus. No coverage is available!")
         }
@@ -50,68 +47,81 @@ abstract class CoverageSampler(
         val initialUncoveredValues = uncoveredValuesCount
         val progressPrinter = GlobalScope.launch {
             while (true) {
-                println("Remain uncovered values: $uncoveredValuesCount / $initialUncoveredValues")
+                logger().trace("Remain uncovered values: $uncoveredValuesCount / $initialUncoveredValues")
                 delay(1000)
             }
         }
 
-        computeCoverage(::cover, ::coverAtom, ::onImpossibleAssignmentFound)
+        cover()
         progressPrinter.cancel(CancellationException("Coverage collected"))
-        logger().debug("Checks statistics: ${prover.checkCounter}")
-        return if (prover is SecondaryProver) prover.getPrimaryCoverage(coverageResult) else coverageResult
+        prover.pop()
+        return predicates.values.map { it.toImmutable() }.toCoverage()
     }
 
     protected val isCovered: Boolean
-        get() = coverageEvaluator.isCovered
+        get() = predicates.values.all { it.isCovered }
 
-    protected val atomsWithSingleUncoveredValue: List<Model.ValueAssignment>
-        get() = coverageEvaluator.booleansWithSingleUncoveredValue
+    protected val uncoveredPredicates: List<CoveragePredicate<KExpr<T>, T>>
+        get() = predicates.values.filter { !it.isCovered }
 
-    protected val uncoveredAtomsWithAnyValue: Set<Model.ValueAssignment>
-        get() = coverageEvaluator.uncoveredBooleansWithAnyValue
+    protected val anyUncoveredAssignments: List<KEqExpr<T>>
+        get() = uncoveredPredicates.map { ctx.mkEq(it.expr, it.getAnyUncoveredValue()) }
 
-    protected val firstSemiCoveredAtom: Model.ValueAssignment?
-        get() = coverageEvaluator.firstSemiCoveredAtom()
-
-    private fun cover(model: List<Model.ValueAssignment>): Set<AtomCoverageBase> {
-        val modelCoverage: Set<AtomCoverageBase>
-
-        val modelCoverageMillis = measureTimeMillis {
-            modelCoverage = coverageEvaluator.cover(model)
-        }
-
-        coverageResult = coverageResult.copy(
-            atomsCoverage = (coverageResult.atomsCoverage to modelCoverage).merge(),
-            coverageComputationMillis = coverageResult.coverageComputationMillis + modelCoverageMillis
-        )
-        return modelCoverage
+    protected fun coverModel(model: KModel): List<KEqExpr<T>> = buildList {
+        uncoveredPredicates
+            .forEach {
+                val value = model.evalOrNull(it.expr)
+                if (value == null) {
+                    /*
+                     * cover all values like lazy-assignable to this expr
+                     */
+                    while (!it.isCovered) {
+                        val value = it.getAnyUncoveredValue()
+                        val exprToValue = ctx.mkEq(it.expr, value)
+                        add(exprToValue)
+                        coverPredicate(exprToValue)
+                    }
+                } else {
+                    val exprToValue = ctx.mkEq(it.expr, value)
+                    add(exprToValue)
+                    coverPredicate(exprToValue)
+                }
+            }
     }
 
-    private fun coverAtom(assignment: Model.ValueAssignment): AtomCoverageBase {
-        val atomCoverage: AtomCoverageBase
+    /**
+     * @return `true` if [KEqExpr.lhs] wasn't covered before the call
+     */
+    protected fun coverPredicate(assignment: KEqExpr<T>): Boolean =
+        predicates[assignment.lhs]?.cover(assignment.rhs) ?: false
 
-        val atomCoverageMillis = measureTimeMillis {
-            atomCoverage = coverageEvaluator.coverAtom(assignment.key as BooleanFormula, assignment.valueAsFormula as BooleanFormula)
-        }
-
-        coverageResult = coverageResult.copy(
-            atomsCoverage = (coverageResult.atomsCoverage to setOf(atomCoverage)).merge(),
-            coverageComputationMillis = coverageResult.coverageComputationMillis + atomCoverageMillis
-        )
-
-        return atomCoverage
+    protected fun onUnsatAssignment(assignment: KEqExpr<T>) {
+        predicates[assignment.lhs]!!.fixUnsatValue(assignment.rhs)
     }
 
-    private fun onImpossibleAssignmentFound(assignment: Model.ValueAssignment) {
-        val atomCoverage: AtomCoverageBase
-        val atomCoverageMillis = measureTimeMillis {
-            atomCoverage = coverageEvaluator.excludeFromCoverageArea(assignment)
+    fun takeModels(count: Int): List<KModel> = buildList {
+        repeat(count) {
+            if (prover.check() != KSolverStatus.SAT)
+                return@buildList
+
+            val model = prover.model().detach()
+            add(model)
+
+            with(ctx) {
+                val constraints = predicates.keys.mapNotNull { predicate ->
+                    val value = model.evalOrNull(predicate)
+                    value?.let { predicate eq value }
+                }
+                prover.assert(!mkAnd(constraints))
+            }
+
         }
     }
 
-    protected fun ModelsEnumerator.take(count: Int): List<List<Model.ValueAssignment>> =
-        this.take(coveragePredicates, count)
+    override fun close() {
+        predicates.values.forEach { predicate -> predicate.close() }
+        prover.close()
+        ctx.close()
+    }
 
 }
-
-fun <T : CoverageSampler> T.checkStatusId(): String = this::class.simpleName ?: this::class.toString()

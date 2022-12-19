@@ -8,46 +8,23 @@ plugins {
 group = "com.sokolov"
 version = "1.0-SNAPSHOT"
 
-//repositories {
-//    mavenCentral()
-//}
-
 repositories {
-    mavenLocal()
-    // Use MavenCentral as a source, but try using POMs first and if that fails just use the artifact
-    mavenCentral {
-        metadataSources {
-            mavenPom()
-        }
-    }
-    mavenCentral {
-        metadataSources {
-            artifact()
-        }
-    }
+    mavenCentral()
 
-    // Ivy can be used as an alternative to MavenCentral
-    ivy {
-        url = uri("https://www.sosy-lab.org/ivy")
-        patternLayout {
-            artifact("/[organisation]/[module]/[classifier]-[revision].[ext]")
-        }
-        metadataSources {
-            artifact()
-        }
-    }
+    // ksmt
+    maven { url = uri("https://jitpack.io") }
 }
 
-
-val javasmtVersion = "3.14.0"
 val junit4Version = "4.13"
+val ksmtVersion = "0.3.0"
 
 dependencies {
-    implementation(project(":solvers"))
-
-//    implementation(fileTree("dir" to "../solvers/build/dependencies", "include" to "*.jar"))
-    // java SMT
-//    implementation("org.sosy-lab:java-smt:$javasmtVersion")
+    // ksmt core
+    implementation("com.github.UnitTestBot.ksmt:ksmt-core:$ksmtVersion")
+    // ksmt - z3 solver
+    implementation("com.github.UnitTestBot.ksmt:ksmt-z3:$ksmtVersion")
+    // ksmt - bitwuzla solver
+    implementation("com.github.UnitTestBot.ksmt:ksmt-bitwuzla:$ksmtVersion")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
@@ -55,30 +32,12 @@ dependencies {
     // logger
     implementation("org.slf4j:slf4j-api:1.7.32")
     implementation("ch.qos.logback:logback-classic:1.2.11")
-    implementation("ch.qos.logback:logback-core:1.2.11")
+    runtimeOnly("ch.qos.logback:logback-core:1.2.11")
 
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    runtimeOnly("org.jetbrains.kotlin:kotlin-reflect")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
-}
-
-val outputsRootDir = File(projectDir, "out/coverage_result")
-
-tasks.register<JavaExec>("compareCoverage") {
-    mainClass.set("com.sokolov.covboy.run.CoverageComparator")
-
-    val outRootDir = outputsRootDir
-    val baseSolver = "Z3"
-
-    classpath(sourceSets["main"].runtimeClasspath)
-
-    args(outRootDir.absolutePath, baseSolver)
-}
-
-tasks.withType<Test> {
-    setForkEvery(1)
-    maxParallelForks = 5
 }
 
 

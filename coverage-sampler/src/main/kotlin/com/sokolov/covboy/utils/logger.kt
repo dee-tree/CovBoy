@@ -1,4 +1,4 @@
-package com.sokolov.covboy
+package com.sokolov.covboy.utils
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory.getLogger
