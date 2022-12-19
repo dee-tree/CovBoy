@@ -9,12 +9,12 @@ import org.ksmt.solver.z3.KZ3SMTLibParser
 import org.ksmt.sort.KBoolSort
 import java.io.File
 
-fun main() {
+fun main(args: Array<String>) {
+    val inputFile = File(args[0])
     val ctx = KContext()
     val solver = KBitwuzlaSolver(ctx)
 
-    val exprs = KZ3SMTLibParser(ctx)
-        .parse(File("/home/sokolov/IdeaProjects/CovBoy/coverage-sampler/input/boolean_simple.smt2").toPath())
+    val exprs = KZ3SMTLibParser(ctx).parse(inputFile.toPath())
 
     exprs.forEach {
         solver.assert(it)
