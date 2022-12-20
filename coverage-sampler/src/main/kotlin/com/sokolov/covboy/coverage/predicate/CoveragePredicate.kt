@@ -1,12 +1,11 @@
 package com.sokolov.covboy.coverage.predicate
 
+import org.ksmt.KContext
 import org.ksmt.expr.KExpr
 import org.ksmt.sort.KSort
 
 abstract class CoveragePredicate<E : KExpr<T>, T : KSort> constructor(
     open val expr: E,
-//    open val satValues: Set<E> = emptySet(),
-//    open val unsatValues: Set<E> = emptySet()
 ) : AutoCloseable {
 
     protected abstract fun isCoveredOnValues(values: Set<E>): Boolean
@@ -21,9 +20,6 @@ abstract class CoveragePredicate<E : KExpr<T>, T : KSort> constructor(
 
     abstract val unsatValues: Set<E>
 
-//    val coveredValues: Set<E>
-//        get() = satValues + unsatValues
-
     val isCovered: Boolean
         get() = isCoveredOnValues(satValues + unsatValues)
 
@@ -33,5 +29,11 @@ abstract class CoveragePredicate<E : KExpr<T>, T : KSort> constructor(
     val fullCoverageOnSatAchieved: Boolean
         get() = isCoveredOnValues(satValues)
 
+    fun dumpToString(ctx: KContext): String = buildString {
+        satValues.forEach { value ->
+            ctx.mkEq(expr, value).print(this)
+            append('\n')
+        }
+    }
 
 }

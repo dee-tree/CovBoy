@@ -159,7 +159,6 @@ class GroupingModelsCoverageSampler<T : KSort>(
                             val track = assumptionToTrack[assumption]
                             val expr = trackToExpr[track]
 
-                            println("expr: $expr")
                             when {
 //                                expr is KEqExpr<*> && expr.lhs in predicates.keys -> predicates[expr.lhs]!!.fixUnsatValue(expr.rhs as KExpr<T>)
                                 expr is KNotExpr && expr.arg is KEqExpr<*> && (expr.arg as KEqExpr<*>).lhs in predicates.keys -> predicates[(expr.arg as KEqExpr<*>).lhs]!!.fixNoMoreSatValues()
