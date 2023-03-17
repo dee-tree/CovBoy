@@ -1,6 +1,6 @@
 package com.sokolov.covboy
 
-class UnknownOnCoverageSamplingException : IllegalStateException {
+class UnknownSolverStatusOnCoverageSamplingException : IllegalStateException {
 
     constructor(msg: String): super(msg)
 

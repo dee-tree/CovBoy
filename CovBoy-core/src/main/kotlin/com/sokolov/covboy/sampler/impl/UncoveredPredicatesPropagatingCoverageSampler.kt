@@ -1,6 +1,6 @@
 package com.sokolov.covboy.sampler.impl
 
-import com.sokolov.covboy.UnknownOnCoverageSamplingException
+import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.sampler.CoverageSampler
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
@@ -57,7 +57,7 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
                     }
                 }
 
-                KSolverStatus.UNKNOWN -> throw UnknownOnCoverageSamplingException("Unknown on asserting $uncoveredAssignments")
+                KSolverStatus.UNKNOWN -> throw UnknownSolverStatusOnCoverageSamplingException("Unknown on asserting $uncoveredAssignments")
             }
 
             solver.pop()

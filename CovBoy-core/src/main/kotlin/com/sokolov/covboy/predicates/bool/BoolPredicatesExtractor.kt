@@ -45,4 +45,15 @@ class BoolPredicatesExtractor(override val ctx: KContext) : KTransformer, Predic
         return expr
     }
 
+    private fun transformQuantifier(expr: KQuantifier): KExpr<KBoolSort> {
+        val bounds = BoolPredicatesExtractor(ctx).extractPredicates(expr.bounds.map { it.apply(emptyList()) })
+        val bodyPredicates = BoolPredicatesExtractor(ctx).extractPredicates(expr.body)
+
+        bools.addAll(bodyPredicates - bounds)
+        return expr
+    }
+
+    override fun transform(expr: KUniversalQuantifier): KExpr<KBoolSort> = transformQuantifier(expr)
+
+    override fun transform(expr: KExistentialQuantifier): KExpr<KBoolSort> = transformQuantifier(expr)
 }

@@ -2,11 +2,9 @@ package com.sokolov.covboy.predicates.integer
 
 import com.sokolov.covboy.predicates.PredicatesExtractor
 import org.ksmt.KContext
-import org.ksmt.expr.KApp
-import org.ksmt.expr.KConst
-import org.ksmt.expr.KExpr
-import org.ksmt.expr.KIntNumExpr
+import org.ksmt.expr.*
 import org.ksmt.expr.transformer.KTransformer
+import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KIntSort
 import org.ksmt.sort.KSort
 import org.ksmt.utils.uncheckedCast
@@ -50,4 +48,15 @@ class IntPredicatesExtractor(override val ctx: KContext) : KTransformer, Predica
         return expr
     }
 
+    private fun transformQuantifier(expr: KQuantifier): KExpr<KBoolSort> {
+        val bounds = IntPredicatesExtractor(ctx).extractPredicates(expr.bounds.map { it.apply(emptyList()) })
+        val bodyPredicates = IntPredicatesExtractor(ctx).extractPredicates(expr.body)
+
+        ints.addAll(bodyPredicates - bounds)
+        return expr
+    }
+
+    override fun transform(expr: KUniversalQuantifier): KExpr<KBoolSort> = transformQuantifier(expr)
+
+    override fun transform(expr: KExistentialQuantifier): KExpr<KBoolSort> = transformQuantifier(expr)
 }
