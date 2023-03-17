@@ -112,10 +112,6 @@ abstract class CoverageSampler<T : KSort> constructor(
         currentCoverageUnsat.getValue(lhs) += rhs
     }
 
-//    protected fun onUnsatAssignment(assignment: KEqExpr<T>) {
-//        predicates[assignment.lhs]!!.fixUnsatValue(assignment.rhs)
-//    }
-
     fun takeModels(count: Int): List<KModel> = buildList {
         repeat(count) {
             if (solver.check() != KSolverStatus.SAT)

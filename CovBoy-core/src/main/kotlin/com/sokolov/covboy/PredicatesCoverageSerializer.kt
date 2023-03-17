@@ -4,6 +4,7 @@ import com.jetbrains.rd.framework.AbstractBuffer
 import com.jetbrains.rd.framework.createAbstractBuffer
 import com.jetbrains.rd.framework.readEnum
 import com.jetbrains.rd.framework.writeEnum
+import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import org.ksmt.KAst
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
@@ -30,6 +31,8 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
 
         // write serialized coverage version
         buffer.writeInt(VERSION)
+
+        buffer.writeInt(SUCCESSFUL_COVERAGE_CODE)
 
         // write CoverageSat
         buffer.writeEnum(FieldMark.CoverageSat)
@@ -59,6 +62,26 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         out.write(buffer.getArray())
     }
 
+    fun isCompleteCoverage(input: InputStream): Boolean {
+        // TODO: ensure that inputStream is markable
+        input.mark(0)
+
+        val buffer = createAbstractBuffer(input.readNBytes(Int.SIZE_BYTES * 2))
+        val version = buffer.readInt()
+
+        return when (version) {
+            1 -> isCompleteCoverageV1(buffer)
+            else -> throw IllegalStateException("Unexpected serialized coverage version: $version, but current is $VERSION")
+        }.also {
+            input.reset()
+        }
+    }
+
+    private fun isCompleteCoverageV1(buffer: AbstractBuffer): Boolean {
+        val successCode = buffer.readInt()
+        return successCode == SUCCESSFUL_COVERAGE_CODE
+    }
+
     fun <S : KSort> deserialize(input: InputStream): PredicatesCoverage<S> {
         val sCtx = AstSerializationCtx()
         sCtx.initCtx(ctx)
@@ -80,6 +103,16 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         deserializer: AstDeserializer,
         buffer: AbstractBuffer
     ): PredicatesCoverage<S> {
+
+        val successCode = buffer.readInt()
+        if (successCode == FAILED_COVERAGE_CODE) {
+            throw IllegalStateException("No available coverage to deserialize | Error during coverage sampling")
+        }
+
+        if (successCode != SUCCESSFUL_COVERAGE_CODE) {
+            throw IllegalStateException("Corrupted serialized coverage!")
+        }
+
         // read CoverageSat
         val coverageSatField = buffer.readEnum<FieldMark>()
         if (coverageSatField != FieldMark.CoverageSat) {
@@ -139,8 +172,54 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
     }
 
 
+    fun PredicatesCoverageSamplingError.serialize(out: OutputStream) {
+        val buffer = createAbstractBuffer()
+
+        // write serialized coverage version
+        buffer.writeInt(VERSION)
+
+        buffer.writeInt(FAILED_COVERAGE_CODE)
+
+        buffer.writeEnum(reason)
+        buffer.writeString(text)
+
+        out.write(buffer.getArray())
+    }
+
+    fun deserializeError(input: InputStream): PredicatesCoverageSamplingError {
+        val buffer = createAbstractBuffer(input.readAllBytes())
+
+        // check serialized coverage version
+        val version = buffer.readInt()
+
+        return when (version) {
+            1 -> deserializeErrorV1(buffer)
+            else -> throw IllegalStateException("Unexpected serialized coverage error version: $version, but current is $VERSION")
+        }
+    }
+
+    private fun deserializeErrorV1(buffer: AbstractBuffer): PredicatesCoverageSamplingError {
+        val successCode = buffer.readInt()
+        if (successCode == SUCCESSFUL_COVERAGE_CODE) {
+            throw IllegalStateException("No coverage sampling error! Coverage completed successfully")
+        }
+
+        if (successCode != FAILED_COVERAGE_CODE) {
+            throw IllegalStateException("Corrupted serialized coverage error!")
+        }
+
+        val reason = buffer.readEnum<PredicatesCoverageSamplingError.Reasons>()
+        val msg = buffer.readString()
+
+        return PredicatesCoverageSamplingError(reason, msg)
+    }
+
+
     companion object {
         private val VERSION = 1
+
+        private val SUCCESSFUL_COVERAGE_CODE = 1 // on coverage successfully collected - serialize it
+        private val FAILED_COVERAGE_CODE = -1 // on any errors during sampling
     }
 
 }

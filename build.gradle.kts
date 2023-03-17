@@ -7,10 +7,16 @@ group = "com.sokolov"
 version = "1.0-SNAPSHOT"
 
 val ksmtVersion: String by project
-val kotlinSerializationVersion: String by project
+val coroutinesVersion: String by project
+val logbackVersion: String by project
+val slf4jVersion: String by project
+val jupiterParamsVersion: String by project
 
 extra { ksmtVersion }
-extra { kotlinSerializationVersion }
+extra { coroutinesVersion }
+extra { logbackVersion }
+extra { slf4jVersion }
+extra { jupiterParamsVersion }
 
 allprojects {
     repositories {
