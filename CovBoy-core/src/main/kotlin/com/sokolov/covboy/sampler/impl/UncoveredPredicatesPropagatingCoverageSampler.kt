@@ -41,7 +41,7 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
             val uncoveredAssignments = uncoveredPredicates.map { it to (coverageUniverse - it.coveredValues).first() }
 
             val uncoveredAssignmentsDisjunction = ctx.mkOr(uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) })
-            solver.assert(uncoveredAssignmentsDisjunction)
+            val uncoveredDisjunctionTrack = solver.assertAndTrack(uncoveredAssignmentsDisjunction)
 
             when (solver.check()) {
                 KSolverStatus.SAT -> {
@@ -50,7 +50,7 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
 
                 KSolverStatus.UNSAT -> {
                     val unsatCore = solver.unsatCore()
-                    check(uncoveredAssignmentsDisjunction in unsatCore)
+                    check(uncoveredDisjunctionTrack in unsatCore)
 
                     uncoveredAssignments.forEach { (lhs, rhs) ->
                         coverPredicateWithUnsatValue(lhs, rhs)
