@@ -1,7 +1,27 @@
 package com.sokolov.covboy.coverage
 
-data class PredicatesCoverageSamplingError(val reason: Reasons, val text: String) {
+import com.sokolov.covboy.PredicatesCoverageSerializer
+import org.ksmt.KContext
+import org.ksmt.runner.generated.models.SolverType
+import java.io.InputStream
+import java.io.OutputStream
+
+data class PredicatesCoverageSamplingError(
+    val reason: Reasons,
+    val text: String,
+    val solverType: SolverType
+) {
     enum class Reasons {
         UnknownDuringSampling, ProcessCrashed, TimeoutExceeded, Other
+    }
+
+    fun serialize(ctx: KContext, out: OutputStream) = with(PredicatesCoverageSerializer(ctx)) {
+        serialize(out)
+    }
+
+    companion object {
+        fun deserialize(ctx: KContext, input: InputStream): PredicatesCoverageSamplingError {
+            return PredicatesCoverageSerializer(ctx).deserializeError(input)
+        }
     }
 }

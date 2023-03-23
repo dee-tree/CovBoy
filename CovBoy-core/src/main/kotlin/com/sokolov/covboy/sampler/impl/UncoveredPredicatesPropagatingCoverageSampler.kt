@@ -8,6 +8,8 @@ import org.ksmt.runner.generated.models.SolverType
 import org.ksmt.solver.KSolverStatus
 import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KSort
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -31,7 +33,16 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
     coverageUniverse: Set<KExpr<S>>,
     coveragePredicates: Set<KExpr<S>>,
     completeModels: Boolean = true,
-) : CoverageSampler<S>(solverType, ctx, assertions, coverageUniverse, coveragePredicates, completeModels) {
+    solverTimeout: Duration = 1.seconds
+) : CoverageSampler<S>(
+    solverType,
+    ctx,
+    assertions,
+    coverageUniverse,
+    coveragePredicates,
+    completeModels,
+    solverTimeout
+) {
 
     override fun coverFormula() {
 
@@ -40,10 +51,11 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
 
             val uncoveredAssignments = uncoveredPredicates.map { it to (coverageUniverse - it.coveredValues).first() }
 
-            val uncoveredAssignmentsDisjunction = ctx.mkOr(uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) })
+            val uncoveredAssignmentsDisjunction =
+                ctx.mkOr(uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) })
             val uncoveredDisjunctionTrack = solver.assertAndTrack(uncoveredAssignmentsDisjunction)
 
-            when (solver.check()) {
+            when (solver.check(solverTimeout)) {
                 KSolverStatus.SAT -> {
                     coverModel(solver.model())
                 }

@@ -5,6 +5,7 @@ import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.ksmt.KContext
+import org.ksmt.runner.generated.models.SolverType
 import org.ksmt.sort.KBoolSort
 import org.ksmt.utils.getValue
 import java.io.ByteArrayInputStream
@@ -25,7 +26,8 @@ class PredicatesCoverageSerializerTest {
         val coverage = PredicatesCoverage(
             mapOf(a to setOf(true.expr), b to setOf(true.expr), f to setOf(true.expr, false.expr)),
             mapOf(a to setOf(false.expr), b to setOf(false.expr)),
-            mkBoolPredicatesUniverse()
+            mkBoolPredicatesUniverse(),
+            SolverType.Z3
         )
 
         val out = ByteArrayOutputStream()
@@ -55,7 +57,8 @@ class PredicatesCoverageSerializerTest {
         val coverage = PredicatesCoverage(
             mapOf(a to setOf(true.expr), b to setOf(true.expr), f to setOf(true.expr, false.expr)),
             mapOf(a to setOf(false.expr), b to setOf(false.expr)),
-            mkBoolPredicatesUniverse()
+            mkBoolPredicatesUniverse(),
+            SolverType.Cvc5
         )
 
         val out = ByteArrayOutputStream()
@@ -76,7 +79,11 @@ class PredicatesCoverageSerializerTest {
 
     @Test
     fun testCoverageSamplingFailureInOutSerialization() = with(ctx) {
-        val error = PredicatesCoverageSamplingError(PredicatesCoverageSamplingError.Reasons.TimeoutExceeded, "timeout 10min exceeded")
+        val error = PredicatesCoverageSamplingError(
+            PredicatesCoverageSamplingError.Reasons.TimeoutExceeded,
+            "timeout 10min exceeded",
+            SolverType.Cvc5
+        )
 
         val out = ByteArrayOutputStream()
         with(PredicatesCoverageSerializer(ctx)) {

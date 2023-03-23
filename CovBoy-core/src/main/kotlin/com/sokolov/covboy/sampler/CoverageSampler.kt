@@ -12,14 +12,17 @@ import org.ksmt.solver.KModel
 import org.ksmt.solver.KSolverStatus
 import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KSort
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 abstract class CoverageSampler<T : KSort> constructor(
-    solverType: SolverType,
+    private val solverType: SolverType,
     protected val ctx: KContext,
     val assertions: List<KExpr<KBoolSort>>,
     val coverageUniverse: Set<KExpr<T>>,
     val coveragePredicates: Set<KExpr<T>>,
     val completeModels: Boolean = true,
+    val solverTimeout: Duration = 1.seconds
 ) : AutoCloseable {
 
     protected val solver = solverType.createInstance(ctx)
@@ -51,7 +54,12 @@ abstract class CoverageSampler<T : KSort> constructor(
 
         solver.pop()
 
-        return PredicatesCoverage(HashMap(currentCoverageSat), HashMap(currentCoverageUnsat), coverageUniverse)
+        return PredicatesCoverage(
+            HashMap(currentCoverageSat),
+            HashMap(currentCoverageUnsat),
+            coverageUniverse,
+            solverType
+        )
     }
 
     protected val allPredicatesCovered: Boolean
@@ -114,7 +122,7 @@ abstract class CoverageSampler<T : KSort> constructor(
 
     fun takeModels(count: Int): List<KModel> = buildList {
         repeat(count) {
-            if (solver.check() != KSolverStatus.SAT)
+            if (solver.check(solverTimeout) != KSolverStatus.SAT)
                 return@buildList
 
             val model = solver.model().detach()

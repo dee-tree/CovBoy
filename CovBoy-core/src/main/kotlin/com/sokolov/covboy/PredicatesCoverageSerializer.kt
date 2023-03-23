@@ -8,6 +8,7 @@ import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import org.ksmt.KAst
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
+import org.ksmt.runner.generated.models.SolverType
 import org.ksmt.runner.serializer.AstDeserializer
 import org.ksmt.runner.serializer.AstSerializationCtx
 import org.ksmt.runner.serializer.AstSerializer
@@ -19,7 +20,7 @@ import java.io.OutputStream
 class PredicatesCoverageSerializer(private val ctx: KContext) {
 
     private enum class FieldMark {
-        CoverageSat, CoverageUnsat, CoverageUniverse
+        CoverageSat, CoverageUnsat, CoverageUniverse, SolverType
     }
 
     fun <S : KSort> PredicatesCoverage<S>.serialize(out: OutputStream) {
@@ -58,6 +59,10 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         buffer.writeEnum(FieldMark.CoverageUniverse)
         buffer.writeInt(coverageUniverse.size)
         coverageUniverse.forEach(serializer::serializeAst)
+
+        // write SolverType
+        buffer.writeEnum(FieldMark.SolverType)
+        buffer.writeEnum(solverType)
 
         out.write(buffer.getArray())
     }
@@ -164,10 +169,19 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
             coverageUniverse += deserializer.deserializeAst().uncheckedCast<KAst, KExpr<S>>()
         }
 
+        // read SolverType
+        val solverTypeField = buffer.readEnum<FieldMark>()
+        if (solverTypeField != FieldMark.SolverType) {
+            throw IllegalStateException("Corrupted serialized coverage!")
+        }
+
+        val solverType = buffer.readEnum<SolverType>()
+
         return PredicatesCoverage(
             coverageSat,
             coverageUnsat,
-            coverageUniverse
+            coverageUniverse,
+            solverType
         )
     }
 
@@ -182,6 +196,7 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
 
         buffer.writeEnum(reason)
         buffer.writeString(text)
+        buffer.writeEnum(solverType)
 
         out.write(buffer.getArray())
     }
@@ -210,8 +225,9 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
 
         val reason = buffer.readEnum<PredicatesCoverageSamplingError.Reasons>()
         val msg = buffer.readString()
+        val solverType = buffer.readEnum<SolverType>()
 
-        return PredicatesCoverageSamplingError(reason, msg)
+        return PredicatesCoverageSamplingError(reason, msg, solverType)
     }
 
 
