@@ -50,7 +50,7 @@ class SamplerMain {
             outCoverageFile: File,
             solverTimeout: Duration = 1.seconds
         ) {
-            outCoverageFile.mkdirs()
+            outCoverageFile.parentFile.mkdirs()
 
             KContext().use { ctx ->
 
