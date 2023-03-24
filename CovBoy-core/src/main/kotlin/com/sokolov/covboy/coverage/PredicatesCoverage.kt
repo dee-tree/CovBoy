@@ -1,5 +1,6 @@
-package com.sokolov.covboy
+package com.sokolov.covboy.coverage
 
+import com.sokolov.covboy.isCovered
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
 import org.ksmt.runner.generated.models.SolverType

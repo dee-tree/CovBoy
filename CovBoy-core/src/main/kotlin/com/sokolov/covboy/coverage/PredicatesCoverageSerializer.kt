@@ -1,10 +1,9 @@
-package com.sokolov.covboy
+package com.sokolov.covboy.coverage
 
 import com.jetbrains.rd.framework.AbstractBuffer
 import com.jetbrains.rd.framework.createAbstractBuffer
 import com.jetbrains.rd.framework.readEnum
 import com.jetbrains.rd.framework.writeEnum
-import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import org.ksmt.KAst
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr

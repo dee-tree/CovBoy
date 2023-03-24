@@ -1,6 +1,5 @@
 package com.sokolov.covboy.coverage
 
-import com.sokolov.covboy.PredicatesCoverageSerializer
 import org.ksmt.KContext
 import org.ksmt.runner.generated.models.SolverType
 import java.io.InputStream

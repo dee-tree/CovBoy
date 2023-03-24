@@ -1,6 +1,8 @@
 package com.sokolov.covboy
 
+import com.sokolov.covboy.coverage.PredicatesCoverage
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
+import com.sokolov.covboy.coverage.PredicatesCoverageSerializer
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows

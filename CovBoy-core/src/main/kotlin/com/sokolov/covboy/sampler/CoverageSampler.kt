@@ -1,6 +1,6 @@
 package com.sokolov.covboy.sampler
 
-import com.sokolov.covboy.PredicatesCoverage
+import com.sokolov.covboy.coverage.PredicatesCoverage
 import com.sokolov.covboy.ensureSat
 import com.sokolov.covboy.isCovered
 import org.ksmt.KContext

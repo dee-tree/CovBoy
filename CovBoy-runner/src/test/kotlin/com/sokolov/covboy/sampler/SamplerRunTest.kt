@@ -1,6 +1,6 @@
 package com.sokolov.covboy.sampler
 
-import com.sokolov.covboy.PredicatesCoverage
+import com.sokolov.covboy.coverage.PredicatesCoverage
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.io.TempDir
