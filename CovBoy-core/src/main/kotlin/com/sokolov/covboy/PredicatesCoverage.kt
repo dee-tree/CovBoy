@@ -20,6 +20,11 @@ data class PredicatesCoverage<S : KSort>(
         coverageUniverse
     )
 
+    fun equalsCoverage(other: PredicatesCoverage<S>): Boolean {
+        if (coverageSat != other.coverageSat) return false
+        return coverageUnsat == other.coverageUnsat
+    }
+
     fun serialize(ctx: KContext, out: OutputStream) = with(PredicatesCoverageSerializer(ctx)) {
         this@PredicatesCoverage.serialize(out)
     }
