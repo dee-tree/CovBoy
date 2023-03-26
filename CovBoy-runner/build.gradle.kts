@@ -40,3 +40,61 @@ tasks.test {
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
+
+fun Project.stringProperty(name: String): String? =
+    if (project.hasProperty(name))
+        project.property(name).toString()
+    else null
+
+fun Project.booleanProperty(name: String): Boolean? =
+    if (project.hasProperty(name))
+        project.property(name)?.toString()?.toBoolean()
+    else null
+
+fun Project.longProperty(name: String): Long? =
+    if (project.hasProperty(name))
+        project.property(name)?.toString()?.toLong()
+    else null
+
+val benchmarksDir = project.stringProperty("benchmarksDir")
+    ?: (project.projectDir.absolutePath + "/data/benchmarks/formulas")
+
+val coverageDir = project.stringProperty("coverageDir")
+    ?: (project.projectDir.absolutePath + "/data/benchmarks/coverage")
+
+val rewriteResults = project.booleanProperty("rewriteResults") ?: false
+
+val solverTimeoutMillis = project.longProperty("solverTimeoutMillis") ?: 1000L
+
+val samplerTimeoutMillis = project.longProperty("samplerTimeoutMillis") ?: 60_000L
+
+val solvers: Array<String> = project.stringProperty("solvers")?.split(',')?.toTypedArray()
+    ?: emptyArray()
+
+val primarySolver: String = project.stringProperty("primarySolver") ?: "Z3"
+
+tasks.register<JavaExec>("benchmarks-sampler") {
+    group = "run"
+    description = "Run the CoverageSampler on *.smt2 SMT formulas on different processes"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.sokolov.covboy.sampler.BenchmarksSamplerRunner")
+    val arguments = listOf(
+        benchmarksDir,
+        coverageDir,
+        solverTimeoutMillis.toString(),
+        samplerTimeoutMillis.toString(),
+        rewriteResults.toString()
+    ) + solvers.toList()
+
+    args(arguments)
+}
+
+tasks.register<JavaExec>("coverage-compare") {
+    group = "run"
+    description = "Run the CoverageComparator on each coverage result in group of inputs"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.sokolov.covboy.coverage.PredicatesCoverageComparatorRunner")
+    val arguments = listOf(coverageDir, primarySolver)
+
+    args(arguments)
+}
