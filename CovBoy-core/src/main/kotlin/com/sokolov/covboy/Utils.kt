@@ -22,6 +22,8 @@ fun KSolver<*>.ensureSat(msg: () -> String) {
 fun KContext.parseAssertions(input: File): List<KExpr<KBoolSort>> =
     KZ3SMTLibParser(this).parse(input.toPath())
 
+fun KContext.parseAssertions(smtLibString: String): List<KExpr<KBoolSort>> =
+    KZ3SMTLibParser(this).parse(smtLibString)
 
 fun <S : KSort> KExpr<S>.isCovered(
     coverageSat: Set<KExpr<S>>,

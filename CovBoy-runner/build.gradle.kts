@@ -14,7 +14,7 @@ val logbackVersion: String by extra
 val jupiterParamsVersion: String by extra
 
 dependencies {
-    implementation(project(":CovBoy-core"))
+    implementation(projects.covBoyCore)
 
     implementation("com.github.UnitTestBot.ksmt:ksmt-core:$ksmtVersion")
     implementation("com.github.UnitTestBot.ksmt:ksmt-runner:$ksmtVersion")
