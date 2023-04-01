@@ -59,18 +59,26 @@ fun Project.longProperty(name: String): Long? =
         project.property(name)?.toString()?.toLong()
     else null
 
+// :benchmarks-sampler
 val benchmarksDir = project.stringProperty("benchmarksDir")
     ?: (project.projectDir.absolutePath + "/data/benchmarks/formulas")
+// ---
 
+// :coverage-compare
+val primarySolver: String = project.stringProperty("primarySolver") ?: "Z3"
+// ---
+
+// :coverage-sampler args
+val benchmarkFile = project.stringProperty("benchmarkFile") ?: ""
+// ---
+
+// common properties:
 val coverageDir = project.stringProperty("coverageDir")
     ?: (project.projectDir.absolutePath + "/data/benchmarks/coverage")
-
-val primarySolver: String = project.stringProperty("primarySolver") ?: "Z3"
-
+val coverageFile = project.stringProperty("coverageFile") ?: ""
 val coverageSamplerType: String = project.stringProperty("samplerType") ?: "baseline"
-
 val samplerParams: String = project.stringProperty("samplerParams") ?: ""
-
+// ---
 
 tasks.register<JavaExec>("benchmarks-sampler") {
     group = "run"
@@ -86,6 +94,38 @@ tasks.register<JavaExec>("benchmarks-sampler") {
         ) + samplerParams.split(",")
     )
 }
+
+tasks.register<JavaExec>("coverage-sampler") {
+    group = "run"
+    description = "Run the CoverageSampler on specified file and solver"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.sokolov.covboy.sampler.main.SamplerMain")
+
+    args(
+        listOf(
+            "--in=$benchmarkFile",
+            "--out=${
+                coverageFile.ifBlank {
+                    File(benchmarkFile).also { benchFile ->
+                        File(benchFile.parentFile, benchFile.nameWithoutExtension + ".cov")
+                    }
+                }
+            }",
+            "--$coverageSamplerType",
+        ) + samplerParams.split(",")
+    )
+}
+
+tasks.register<JavaExec>("coverage-info") {
+    group = "run"
+    description = "Get info of serialized formula coverage"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.sokolov.covboy.coverage.CoverageInfoPrinter")
+
+    args(coverageFile)
+}
+
+
 
 tasks.register<JavaExec>("coverage-compare") {
     group = "run"

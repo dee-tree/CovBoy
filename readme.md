@@ -4,7 +4,7 @@
 
 ### Coverage sampler
 
-#### On *smtlib v2* benchmarks
+#### On *smtlib-v2* benchmarks
 
 Run on all *.smt2 files in directory:
 
@@ -32,6 +32,26 @@ Options:
     possible (`false`)
   * `Z3,Bitwuzla,Cvc5,Yices` - solvers, used to sample coverage on formulas. Possible
     solvers: [Z3, Bitwuzla, Cvc5, Yices] - currently supported in **ksmt**
+
+#### On a single *smtlib-v2* file:
+
+`gradle :CovBoy-runner:coverage-sampler`
+
+Example:
+`gradle :CovBoy-runner:coverage-sampler -PbenchmarkFile=./data/benchmarks/formulas/QF_BV/Sage2/bench_0.smt2 -PcoverageFile=./data/benchmarks/coverage/QF_BV/Sage2/bench_0/Z3.cov -PsamplerParams=--Z3`
+
+-----
+
+### Coverage info
+
+Read .cov coverage sampled file:
+
+`gradle :CovBoy-runner:coverage-info`
+
+Example:
+`gradle :CovBoy-runner:coverage-info -PcoverageFile=./data/benchmarks/coverage/QF_BV/Sage2/bench_0/Z3.cov`
+
+-----
 
 ### Coverage comparator
 
