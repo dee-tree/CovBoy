@@ -5,52 +5,60 @@ import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import com.sokolov.covboy.parseAssertions
 import com.sokolov.covboy.predicates.bool.BoolPredicatesExtractor
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
-import com.sokolov.covboy.sampler.impl.UncoveredPredicatesPropagatingCoverageSampler
+import com.sokolov.covboy.sampler.impl.getModelsGroupSizeParam
+import com.sokolov.covboy.sampler.impl.hasModelsGroupSizeParam
+import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.xenomachina.argparser.ArgParser
+import com.xenomachina.argparser.mainBody
 import org.ksmt.KContext
 import org.ksmt.runner.generated.models.SolverType
 import java.io.File
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 class SamplerMain {
     companion object {
         @JvmStatic
-        fun main(args: Array<String>) {
-            val solverType = SolverType.valueOf(args[0])
-            val inSmtLibFormula = File(args[1])
-            val outCoverageFile = File(args[2])
-            val solverTimeoutMillis = args[3].toLong()
-            val solverTimeout = solverTimeoutMillis.milliseconds
-
-            runSamplerSmtLib(
-                solverType,
-                inSmtLibFormula,
-                outCoverageFile,
-                solverTimeout
-            )
+        fun main(args: Array<String>) = mainBody {
+            ArgParser(args).parseInto(::SamplerMainArgs).run {
+                runSamplerSmtLib(
+                    solverType = solverType,
+                    smtLibFormulaFile = smtLibFormulaFile,
+                    outCoverageFile = coverageFile,
+                    coverageSamplerType = coverageSamplerType,
+                    params
+                )
+            }
         }
 
         fun makeArgs(
             solverType: SolverType,
             inSmtLibFormula: File,
             outCoverageFile: File,
-            solverTimeout: Duration = 1.seconds
-        ): Array<String> = arrayOf(
-            solverType.name,
-            inSmtLibFormula.absolutePath,
-            outCoverageFile.absolutePath,
-            solverTimeout.inWholeMilliseconds.toString()
-        )
+            coverageSamplerType: CoverageSamplerType,
+            params: CoverageSamplerParams = CoverageSamplerParams.Empty
+        ): Array<String> = listOfNotNull(
+            "--${solverType.name}",
+            "--in=${inSmtLibFormula.absolutePath}",
+            "--out=${outCoverageFile.absolutePath}",
+            "--${coverageSamplerType.name}",
+
+            // params
+            if (coverageSamplerType == CoverageSamplerType.GroupingModelsSampler && params.hasModelsGroupSizeParam()) "--mgs=${params.getModelsGroupSizeParam()}" else null,
+            if (params.hasSolverTimeoutMillisParam()) "--stm=${params.getSolverTimeoutMillisParam()}" else null,
+            if (params.hasCompleteModelsParam()) "--cm=${params.getCompleteModelsParam()}" else null
+        ).toTypedArray()
 
         @JvmStatic
         fun runSamplerSmtLib(
             solverType: SolverType,
             smtLibFormulaFile: File,
             outCoverageFile: File,
-            solverTimeout: Duration = 1.seconds
+            coverageSamplerType: CoverageSamplerType,
+            samplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty
         ) {
-            outCoverageFile.parentFile.mkdirs()
+            if (outCoverageFile.exists())
+                outCoverageFile.delete()
+            else
+                outCoverageFile.parentFile.mkdirs()
 
             KContext().use { ctx ->
 
@@ -59,13 +67,13 @@ class SamplerMain {
                 // TODO: extend with int predicates
                 val predicates = BoolPredicatesExtractor(ctx).extractPredicates(assertions)
 
-                val sampler = UncoveredPredicatesPropagatingCoverageSampler(
+                val sampler = coverageSamplerType.makeCoverageSampler(
                     solverType,
                     ctx,
                     assertions,
                     ctx.mkBoolPredicatesUniverse(),
                     predicates,
-                    solverTimeout = solverTimeout
+                    samplerParams
                 )
 
                 try {

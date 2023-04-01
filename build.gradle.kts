@@ -14,6 +14,7 @@ val logbackVersion: String by project
 val slf4jVersion: String by project
 val jupiterParamsVersion: String by project
 val jmhVersion: String by project
+val argParserVersion: String by project
 
 extra { ksmtVersion }
 extra { coroutinesVersion }
@@ -21,6 +22,7 @@ extra { logbackVersion }
 extra { slf4jVersion }
 extra { jupiterParamsVersion }
 extra { jmhVersion }
+extra { argParserVersion }
 
 allprojects {
     repositories {

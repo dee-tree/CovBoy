@@ -12,6 +12,7 @@ val coroutinesVersion: String by extra
 val slf4jVersion: String by extra
 val logbackVersion: String by extra
 val jupiterParamsVersion: String by extra
+val argParserVersion: String by extra
 
 dependencies {
     implementation(projects.covBoyCore)
@@ -20,6 +21,8 @@ dependencies {
     implementation("com.github.UnitTestBot.ksmt:ksmt-runner:$ksmtVersion")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+
+    implementation("com.xenomachina:kotlin-argparser:$argParserVersion")
 
     // logger
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
@@ -62,31 +65,26 @@ val benchmarksDir = project.stringProperty("benchmarksDir")
 val coverageDir = project.stringProperty("coverageDir")
     ?: (project.projectDir.absolutePath + "/data/benchmarks/coverage")
 
-val rewriteResults = project.booleanProperty("rewriteResults") ?: false
-
-val solverTimeoutMillis = project.longProperty("solverTimeoutMillis") ?: 1000L
-
-val samplerTimeoutMillis = project.longProperty("samplerTimeoutMillis") ?: 60_000L
-
-val solvers: Array<String> = project.stringProperty("solvers")?.split(',')?.toTypedArray()
-    ?: emptyArray()
-
 val primarySolver: String = project.stringProperty("primarySolver") ?: "Z3"
+
+val coverageSamplerType: String = project.stringProperty("samplerType") ?: "baseline"
+
+val samplerParams: String = project.stringProperty("samplerParams") ?: ""
+
 
 tasks.register<JavaExec>("benchmarks-sampler") {
     group = "run"
     description = "Run the CoverageSampler on *.smt2 SMT formulas on different processes"
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.sokolov.covboy.sampler.BenchmarksSamplerRunner")
-    val arguments = listOf(
-        benchmarksDir,
-        coverageDir,
-        solverTimeoutMillis.toString(),
-        samplerTimeoutMillis.toString(),
-        rewriteResults.toString()
-    ) + solvers.toList()
 
-    args(arguments)
+    args(
+        listOf(
+            "--benchmarks=$benchmarksDir",
+            "--out=$coverageDir",
+            "--$coverageSamplerType",
+        ) + samplerParams.split(",")
+    )
 }
 
 tasks.register<JavaExec>("coverage-compare") {

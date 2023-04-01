@@ -1,6 +1,7 @@
 package com.sokolov.covboy.sampler
 
 import com.sokolov.covboy.coverage.PredicatesCoverage
+import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.io.TempDir
@@ -39,7 +40,8 @@ class SamplerRunnerTest {
         SamplerMain.runSamplerSmtLib(
             solverType,
             input,
-            outputCoverageFile
+            outputCoverageFile,
+            CoverageSamplerType.PredicatesPropagatingSampler //TODO: allow here to run another coverage sampler type
         )
 
         val ctx = KContext()
@@ -85,7 +87,8 @@ class SamplerRunnerTest {
                 input,
                 outputCoverageFile,
                 coroutineContext = this.coroutineContext,
-                coverageSamplerTimeout = 5.seconds
+                coverageSamplerType = CoverageSamplerType.PredicatesPropagatingSampler, // TODO: test all CoverageSamplerType
+                coverageSamplerParams = CoverageSamplerParams.build { putSamplerTimeoutMillis(5.seconds.inWholeMilliseconds) }
             )
         }
         // after process finished

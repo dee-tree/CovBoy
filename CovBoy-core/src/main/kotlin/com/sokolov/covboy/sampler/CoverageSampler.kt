@@ -3,8 +3,9 @@ package com.sokolov.covboy.sampler
 import com.sokolov.covboy.coverage.PredicatesCoverage
 import com.sokolov.covboy.ensureSat
 import com.sokolov.covboy.isCovered
+import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
 import org.ksmt.KContext
-import org.ksmt.expr.KEqExpr
 import org.ksmt.expr.KExpr
 import org.ksmt.runner.generated.createInstance
 import org.ksmt.runner.generated.models.SolverType
@@ -21,8 +22,8 @@ abstract class CoverageSampler<T : KSort> constructor(
     val assertions: List<KExpr<KBoolSort>>,
     val coverageUniverse: Set<KExpr<T>>,
     val coveragePredicates: Set<KExpr<T>>,
-    val completeModels: Boolean = true,
-    val solverTimeout: Duration = 1.seconds
+    val completeModels: Boolean = DEFAULT_COMPLETE_MODELS,
+    val solverTimeout: Duration = DEFAULT_SOLVER_TIMEOUT
 ) : AutoCloseable {
 
     protected val solver = solverType.createInstance(ctx)
@@ -78,7 +79,7 @@ abstract class CoverageSampler<T : KSort> constructor(
 //    protected val anyUncoveredAssignments: List<KEqExpr<T>>
 //        get() = uncoveredPredicates.map { ctx.mkEq(it.expr, it.getAnyUncoveredValue()) }
 
-    protected fun coverModel(model: KModel): List<KEqExpr<T>> = buildList {
+    protected fun coverModel(model: KModel): List<Pair<KExpr<T>, KExpr<T>>> = buildList {
         uncoveredPredicates
             .forEach { predicate ->
                 val value = model.eval(predicate, isComplete = completeModels)
@@ -89,7 +90,7 @@ abstract class CoverageSampler<T : KSort> constructor(
                      */
 
                     (coverageUniverse - predicate.coveredValues).forEach {
-                        add(ctx.mkEqNoSimplify(predicate, it))
+                        add(predicate to it)
                         coverPredicateWithSatValue(predicate, it)
                     }
                 } else {
@@ -97,7 +98,7 @@ abstract class CoverageSampler<T : KSort> constructor(
                      * this term has sat-value
                      */
 
-                    add(ctx.mkEqNoSimplify(predicate, value))
+                    add(predicate to value)
                     coverPredicateWithSatValue(predicate, value)
                 }
             }
@@ -120,7 +121,7 @@ abstract class CoverageSampler<T : KSort> constructor(
         currentCoverageUnsat.getValue(lhs) += rhs
     }
 
-    fun takeModels(count: Int): List<KModel> = buildList {
+    protected fun takeModels(count: Int): List<KModel> = buildList {
         repeat(count) {
             if (solver.check(solverTimeout) != KSolverStatus.SAT)
                 return@buildList
@@ -149,4 +150,30 @@ abstract class CoverageSampler<T : KSort> constructor(
         solver.close()
     }
 
+    companion object {
+        const val DEFAULT_COMPLETE_MODELS = true
+        val DEFAULT_SOLVER_TIMEOUT = 1.seconds
+    }
+
+    object ParamKeys {
+        const val SolverTimeoutMillis = "SolverTimeoutMillis"
+        const val CompleteModels = "CompleteModels"
+    }
+}
+
+fun CoverageSamplerParams.hasSolverTimeoutMillisParam(): Boolean =
+    hasLongParam(CoverageSampler.ParamKeys.SolverTimeoutMillis)
+
+fun CoverageSamplerParams.hasCompleteModelsParam(): Boolean = hasBoolParam(CoverageSampler.ParamKeys.CompleteModels)
+
+
+fun CoverageSamplerParams.getSolverTimeoutMillisParam(): Long = getLong(CoverageSampler.ParamKeys.SolverTimeoutMillis)
+fun CoverageSamplerParams.getCompleteModelsParam(): Boolean = getBool(CoverageSampler.ParamKeys.CompleteModels)
+
+fun CoverageSamplerParamsBuilder.putSolverTimeoutMillis(value: Long) {
+    putParam(CoverageSampler.ParamKeys.SolverTimeoutMillis, value)
+}
+
+fun CoverageSamplerParamsBuilder.putCompleteModels(value: Boolean) {
+    putParam(CoverageSampler.ParamKeys.CompleteModels, value)
 }

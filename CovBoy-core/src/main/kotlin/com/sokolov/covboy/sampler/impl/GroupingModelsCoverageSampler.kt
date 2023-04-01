@@ -1,11 +1,17 @@
 package com.sokolov.covboy.sampler.impl
 
-import com.sokolov.covboy.sampler.CoverageSampler
+import com.sokolov.covboy.sampler.*
+import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
 import org.ksmt.runner.generated.models.SolverType
+import org.ksmt.solver.KSolverStatus
 import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KSort
+import org.ksmt.utils.mkFreshConst
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Model1: a = true, b = true, c = false  |
@@ -13,6 +19,9 @@ import org.ksmt.sort.KSort
  * ----------------------------------------
  * modelsConjunction = Model1 && Model2 (a = true, b = true)
  * assert(!modelsConjunction) // assert(a != true || b != true)
+ *
+ * ...
+ * ...
  */
 class GroupingModelsCoverageSampler<S : KSort>(
     solverType: SolverType,
@@ -20,16 +29,160 @@ class GroupingModelsCoverageSampler<S : KSort>(
     assertions: List<KExpr<KBoolSort>>,
     coverageUniverse: Set<KExpr<S>>,
     coveragePredicates: Set<KExpr<S>>,
-    completeModels: Boolean = true,
-    val groupSize: Int = 2
-) : CoverageSampler<S>(solverType, ctx, assertions, coverageUniverse, coveragePredicates, completeModels) {
+    completeModels: Boolean = DEFAULT_COMPLETE_MODELS,
+    solverTimeout: Duration = DEFAULT_SOLVER_TIMEOUT,
+    val groupSize: Int = DEFAULT_MODELS_GROUP_SIZE
+) : CoverageSampler<S>(
+    solverType,
+    ctx,
+    assertions,
+    coverageUniverse,
+    coveragePredicates,
+    completeModels,
+    solverTimeout
+) {
 
-    override fun coverFormula() = TODO("Not yet implemented")
-
-    /*init {
+    init {
         check(groupSize > 0)
     }
 
+    constructor(
+        solverType: SolverType,
+        ctx: KContext,
+        assertions: List<KExpr<KBoolSort>>,
+        coverageUniverse: Set<KExpr<S>>,
+        coveragePredicates: Set<KExpr<S>>,
+        params: CoverageSamplerParams
+    ) : this(
+        solverType,
+        ctx,
+        assertions,
+        coverageUniverse,
+        coveragePredicates,
+        if (params.hasCompleteModelsParam()) params.getCompleteModelsParam() else DEFAULT_COMPLETE_MODELS,
+        if (params.hasSolverTimeoutMillisParam()) params.getSolverTimeoutMillisParam().milliseconds else DEFAULT_SOLVER_TIMEOUT,
+        if (params.hasModelsGroupSizeParam()) params.getModelsGroupSizeParam() else DEFAULT_MODELS_GROUP_SIZE
+    )
+
+    private val commonModelsTracks = mutableListOf<KExpr<KBoolSort>>()
+    private val commonModelsAssumptions = mutableListOf<KExpr<KBoolSort>>()
+
+    private val trackToExpr = mutableMapOf<KExpr<KBoolSort>, KExpr<*>>()
+    private val assumptionToTrack = mutableMapOf<KExpr<KBoolSort>, KExpr<KBoolSort>>()
+
+    override fun coverFormula() = with(ctx) {
+        while (!allPredicatesCovered) {
+            val thisStepUncoveredPredicates = uncoveredPredicates
+
+            val modelsGroup = takeModels(groupSize)
+            val covered = modelsGroup.map { coverModel(it) }.flatten()
+
+            if (modelsGroup.size < groupSize) {
+                /*
+                 * no models left | Full coverage collected
+                 */
+
+                if (commonModelsAssumptions.isEmpty()) {
+
+                    uncoveredPredicates.forEach { predicate ->
+                        (coverageUniverse - predicate.coveredValues).forEach { unsatValue ->
+                            coverPredicateWithUnsatValue(predicate, unsatValue)
+                        }
+                    }
+
+                    break
+                }
+
+                commonModelsAssumptions.forEach(::disableAssumption)
+
+                continue
+            }
+
+            val commonModelAssignments = mutableListOf<KExpr<KBoolSort>>()
+
+            thisStepUncoveredPredicates.forEach { predicate ->
+                val predicateAssignments = covered.filter { it.first == predicate }
+                if (predicateAssignments.size == 1) {
+                    commonModelAssignments += ctx.mkEq(predicate, predicateAssignments[0].second)
+                }
+            }
+
+            if (commonModelAssignments.isEmpty())
+                continue
+
+            val commonModelsConjunction = mkAnd(commonModelAssignments)
+            val commonModelsAssumption = boolSort.mkFreshConst("cm_track")
+            val assumedCommonModelsConjunction = commonModelsAssumption implies commonModelsConjunction
+
+            solver.assertAndTrack(assumedCommonModelsConjunction).also { commonModelsTrack ->
+                commonModelsTracks += commonModelsTrack
+                commonModelsAssumptions += commonModelsAssumption
+
+                trackToExpr[commonModelsTrack] = assumedCommonModelsConjunction
+                assumptionToTrack[commonModelsAssumption] = commonModelsTrack
+            }
+
+            solver.checkWithAssumptions(
+                commonModelsAssumptions,
+                solverTimeout
+            ).process()
+
+
+            /*            for (predicate in uncoveredPredicates) {
+                            val value = modelsGroup.first().eval(predicate, completeModels)
+
+                            if (!completeModels && value !in coverageUniverse) {
+                                *//*
+                     * value of this term is not influence on formula satisfiability
+                     *//*
+                    (coverageUniverse - predicate.coveredValues).forEach {
+                        coverPredicateWithSatValue(predicate, it)
+                    }
+
+                    continue
+
+                } else {
+                    *//*
+                     * this term has sat-value
+                     *//*
+                    val otherModels = modelsGroup.drop(1)
+                    for (model in otherModels) {
+                        val otherValue = model.eval(predicate, completeModels)
+
+                    }
+                }
+            }*/
+
+        }
+    }
+
+    fun KSolverStatus.process() {
+        when (this) {
+            KSolverStatus.UNSAT -> {
+                val unsatCore = solver.unsatCore().toHashSet()
+
+                for (i in commonModelsAssumptions.indices.reversed()) {
+                    disableAssumption(commonModelsAssumptions[i])
+                }
+            }
+        }
+
+
+    }
+
+
+    private fun disableAssumption(assumption: KExpr<KBoolSort>) {
+        commonModelsAssumptions -= assumption
+        disableTrack(assumptionToTrack[assumption]!!)
+        assumptionToTrack -= assumption
+    }
+
+    private fun disableTrack(track: KExpr<KBoolSort>) {
+        commonModelsTracks -= track
+        trackToExpr -= track
+    }
+
+    /*
     private var coverageIncreasedOnLastIteration: Boolean = true
 
     private val intersectionTracks = mutableSetOf<KExpr<KBoolSort>>()
@@ -208,4 +361,22 @@ fun makeBoolGroupingModelsCoverageSampler(
         solver, ctx, predicates.map { it.expr },
         { expr: KExpr<KBoolSort> -> predicates.first { it.expr == expr } }, groupSize
     )*/
+    object ParamKeys {
+        const val ModelsGroupSize = "ModelGroupSize"
+    }
+
+    companion object {
+        const val DEFAULT_MODELS_GROUP_SIZE = 2
+    }
+}
+
+fun CoverageSamplerParams.hasModelsGroupSizeParam(): Boolean =
+    hasIntParam(GroupingModelsCoverageSampler.ParamKeys.ModelsGroupSize)
+
+fun CoverageSamplerParams.getModelsGroupSizeParam(): Int =
+    getInt(GroupingModelsCoverageSampler.ParamKeys.ModelsGroupSize)
+
+fun CoverageSamplerParamsBuilder.putModelsGroupSizeParam(value: Int) {
+    check(value > 0)
+    putParam(GroupingModelsCoverageSampler.ParamKeys.ModelsGroupSize, value)
 }

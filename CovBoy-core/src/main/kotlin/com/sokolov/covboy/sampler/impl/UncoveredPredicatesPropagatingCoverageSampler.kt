@@ -1,7 +1,8 @@
 package com.sokolov.covboy.sampler.impl
 
 import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
-import com.sokolov.covboy.sampler.CoverageSampler
+import com.sokolov.covboy.sampler.*
+import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
 import org.ksmt.runner.generated.models.SolverType
@@ -9,6 +10,7 @@ import org.ksmt.solver.KSolverStatus
 import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KSort
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -43,6 +45,23 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
     completeModels,
     solverTimeout
 ) {
+
+    constructor(
+        solverType: SolverType,
+        ctx: KContext,
+        assertions: List<KExpr<KBoolSort>>,
+        coverageUniverse: Set<KExpr<S>>,
+        coveragePredicates: Set<KExpr<S>>,
+        params: CoverageSamplerParams
+    ) : this(
+        solverType,
+        ctx,
+        assertions,
+        coverageUniverse,
+        coveragePredicates,
+        if (params.hasCompleteModelsParam()) params.getCompleteModelsParam() else DEFAULT_COMPLETE_MODELS,
+        if (params.hasSolverTimeoutMillisParam()) params.getSolverTimeoutMillisParam().milliseconds else DEFAULT_SOLVER_TIMEOUT
+    )
 
     override fun coverFormula() {
 
