@@ -1,5 +1,6 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.benchmarks
 
+import com.sokolov.covboy.sampler.process.SamplerProcessParamArgs
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import org.ksmt.runner.generated.models.SolverType

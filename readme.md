@@ -13,7 +13,7 @@ Run on all *.smt2 files in directory:
 Example:
 
 ```
-gradle :CovBoy-runner:benchmarks-sampler -PbenchmarksDir=./data/benchmarks/formulas/QF_BV/asp/DisjunctiveScheduling -PcoverageDir=./data/benchmarks/coverage/QF_BV/asp/DisjunctiveScheduling -PsamplerType=baseline -PsamplerParams=--solverTimeoutMillis=1000,--samplerTimeoutMillis=60000,--completeModels=true,Z3,Bitwuzla,Cvc5
+gradle :CovBoy-runner:benchmarks-sampler -PbenchmarksDir=./data/benchmarks/formulas -PcoverageDir=./data/benchmarks/coverage -PsamplerType=baseline -PsamplerParams=--solverTimeoutMillis=1000,--samplerTimeoutMillis=60000,--completeModels=true,Z3,Bitwuzla,Cvc5
 ```
 
 Options:

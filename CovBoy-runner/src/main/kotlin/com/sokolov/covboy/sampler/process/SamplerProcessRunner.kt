@@ -1,10 +1,12 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.process
 
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError.Reasons.ProcessCrashed
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError.Reasons.TimeoutExceeded
 import com.sokolov.covboy.logger
 import com.sokolov.covboy.process.asProcessRunner
+import com.sokolov.covboy.sampler.CoverageSamplerType
+import com.sokolov.covboy.sampler.main.SamplerMain
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
 import kotlinx.coroutines.Dispatchers

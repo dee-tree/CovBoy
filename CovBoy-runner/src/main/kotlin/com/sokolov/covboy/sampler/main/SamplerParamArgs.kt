@@ -1,8 +1,12 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.main
 
+import com.sokolov.covboy.sampler.CoverageSampler
+import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.impl.GroupingModelsCoverageSampler
 import com.sokolov.covboy.sampler.impl.putModelsGroupSizeParam
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.sampler.putCompleteModels
+import com.sokolov.covboy.sampler.putSolverTimeoutMillis
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 

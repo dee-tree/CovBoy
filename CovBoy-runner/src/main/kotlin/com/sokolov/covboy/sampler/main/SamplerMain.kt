@@ -1,10 +1,11 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.main
 
 import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import com.sokolov.covboy.parseAssertions
 import com.sokolov.covboy.predicates.bool.BoolPredicatesExtractor
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
+import com.sokolov.covboy.sampler.*
 import com.sokolov.covboy.sampler.impl.getModelsGroupSizeParam
 import com.sokolov.covboy.sampler.impl.hasModelsGroupSizeParam
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams

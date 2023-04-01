@@ -1,7 +1,10 @@
 package com.sokolov.covboy.sampler
 
 import com.sokolov.covboy.coverage.PredicatesCoverage
+import com.sokolov.covboy.sampler.main.SamplerMain
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.sampler.process.SamplerProcessRunner
+import com.sokolov.covboy.sampler.process.putSamplerTimeoutMillis
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.io.TempDir

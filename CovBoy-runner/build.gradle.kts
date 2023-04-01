@@ -76,7 +76,7 @@ tasks.register<JavaExec>("benchmarks-sampler") {
     group = "run"
     description = "Run the CoverageSampler on *.smt2 SMT formulas on different processes"
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("com.sokolov.covboy.sampler.BenchmarksSamplerRunner")
+    mainClass.set("com.sokolov.covboy.sampler.benchmarks.BenchmarksSamplerRunner")
 
     args(
         listOf(

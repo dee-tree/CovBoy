@@ -1,5 +1,6 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.process
 
+import com.sokolov.covboy.sampler.main.SamplerParamArgs
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default

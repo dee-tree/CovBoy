@@ -1,4 +1,4 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.main
 
 import com.xenomachina.argparser.ArgParser
 import org.ksmt.runner.generated.models.SolverType

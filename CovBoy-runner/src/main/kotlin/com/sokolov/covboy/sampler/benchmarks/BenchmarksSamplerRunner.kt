@@ -1,7 +1,9 @@
-package com.sokolov.covboy.sampler
+package com.sokolov.covboy.sampler.benchmarks
 
 import com.sokolov.covboy.logger
+import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.sampler.process.SamplerProcessRunner
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 import kotlinx.coroutines.asCoroutineDispatcher
