@@ -10,10 +10,12 @@ import org.ksmt.expr.KExpr
 import org.ksmt.runner.generated.createInstance
 import org.ksmt.runner.generated.models.SolverType
 import org.ksmt.solver.KModel
+import org.ksmt.solver.KSolver
 import org.ksmt.solver.KSolverStatus
 import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KSort
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 abstract class CoverageSampler<T : KSort> constructor(
@@ -26,7 +28,24 @@ abstract class CoverageSampler<T : KSort> constructor(
     val solverTimeout: Duration = DEFAULT_SOLVER_TIMEOUT
 ) : AutoCloseable {
 
-    protected val solver = solverType.createInstance(ctx)
+    constructor(
+        solverType: SolverType,
+        ctx: KContext,
+        assertions: List<KExpr<KBoolSort>>,
+        coverageUniverse: Set<KExpr<T>>,
+        coveragePredicates: Set<KExpr<T>>,
+        params: CoverageSamplerParams
+    ) : this(
+        solverType,
+        ctx,
+        assertions,
+        coverageUniverse,
+        coveragePredicates,
+        if (params.hasCompleteModelsParam()) params.getCompleteModelsParam() else DEFAULT_COMPLETE_MODELS,
+        if (params.hasSolverTimeoutMillisParam()) params.getSolverTimeoutMillisParam().milliseconds else DEFAULT_SOLVER_TIMEOUT
+    )
+
+    protected open val solver = solverType.createInstance(ctx)
 
     private val currentCoverageSat = HashMap<KExpr<T>, HashSet<KExpr<T>>>(coveragePredicates.size).apply {
         coveragePredicates.forEach { predicate ->
@@ -48,7 +67,7 @@ abstract class CoverageSampler<T : KSort> constructor(
     fun computeCoverage(): PredicatesCoverage<T> {
         assertions.forEach(solver::assert)
 
-        solver.ensureSat { "No coverage is available" }
+        solver.ensureSat(solverTimeout) { "No coverage is available" }
         solver.push()
 
         coverFormula()
@@ -76,6 +95,9 @@ abstract class CoverageSampler<T : KSort> constructor(
     protected val uncoveredPredicates: List<KExpr<T>>
         get() = coveragePredicates.filter { !it.isCovered }
 
+    protected val uncoveredPredicatesSeq: Sequence<KExpr<T>>
+        get() = coveragePredicates.asSequence().filter { !it.isCovered }
+
 //    protected val anyUncoveredAssignments: List<KEqExpr<T>>
 //        get() = uncoveredPredicates.map { ctx.mkEq(it.expr, it.getAnyUncoveredValue()) }
 
@@ -90,16 +112,20 @@ abstract class CoverageSampler<T : KSort> constructor(
                      */
 
                     (coverageUniverse - predicate.coveredValues).forEach {
-                        add(predicate to it)
-                        coverPredicateWithSatValue(predicate, it)
+                        if (it !in predicate.coveredValues) {
+                            add(predicate to it)
+                            coverPredicateWithSatValue(predicate, it)
+                        }
                     }
                 } else {
                     /*
                      * this term has sat-value
                      */
 
-                    add(predicate to value)
-                    coverPredicateWithSatValue(predicate, value)
+                    if (value !in predicate.coveredValues) {
+                        add(predicate to value)
+                        coverPredicateWithSatValue(predicate, value)
+                    }
                 }
             }
     }
@@ -121,9 +147,9 @@ abstract class CoverageSampler<T : KSort> constructor(
         currentCoverageUnsat.getValue(lhs) += rhs
     }
 
-    protected fun takeModels(count: Int): List<KModel> = buildList {
+    protected fun takeModels(count: Int, assumptions: List<KExpr<KBoolSort>> = emptyList()): List<KModel> = buildList {
         repeat(count) {
-            if (solver.check(solverTimeout) != KSolverStatus.SAT)
+            if (solver.checkWithAssumptionsAndTimeout(assumptions) != KSolverStatus.SAT)
                 return@buildList
 
             val model = solver.model().detach()
@@ -142,6 +168,14 @@ abstract class CoverageSampler<T : KSort> constructor(
                 solver.assert(!mkAnd(constraints))
             }
         }
+    }
+
+    open fun KSolver<*>.checkWithTimeout(): KSolverStatus {
+        return check(solverTimeout)
+    }
+
+    open fun KSolver<*>.checkWithAssumptionsAndTimeout(assumptions: List<KExpr<KBoolSort>>): KSolverStatus {
+        return checkWithAssumptions(assumptions, solverTimeout)
     }
 
     override fun close() {

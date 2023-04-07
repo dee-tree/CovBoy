@@ -59,6 +59,8 @@ class PredicatesCoverageComparatorRunner {
                     }
                 }
             }
+
+            logger().info("Totally compared coverage of ${coverageCases.size} formulas")
         }
 
         @JvmStatic

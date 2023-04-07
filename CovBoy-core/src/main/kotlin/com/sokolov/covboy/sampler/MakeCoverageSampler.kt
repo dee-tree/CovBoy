@@ -1,5 +1,6 @@
 package com.sokolov.covboy.sampler
 
+import com.sokolov.covboy.sampler.impl.BaselinePredicatePropagatingCoverageSampler
 import com.sokolov.covboy.sampler.impl.GroupingModelsCoverageSampler
 import com.sokolov.covboy.sampler.impl.UncoveredPredicatesPropagatingCoverageSampler
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
@@ -17,6 +18,15 @@ fun <S : KSort> CoverageSamplerType.makeCoverageSampler(
     coveragePredicates: Set<KExpr<S>>,
     params: CoverageSamplerParams
 ): CoverageSampler<S> = when (this) {
+    CoverageSamplerType.BaselinePredicatePropagating -> BaselinePredicatePropagatingCoverageSampler(
+        solverType,
+        ctx,
+        assertions,
+        coverageUniverse,
+        coveragePredicates,
+        params
+    )
+
     CoverageSamplerType.PredicatesPropagatingSampler -> UncoveredPredicatesPropagatingCoverageSampler(
         solverType,
         ctx,

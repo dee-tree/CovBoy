@@ -10,9 +10,10 @@ import org.ksmt.sort.KSort
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
+import kotlin.time.Duration
 
-fun KSolver<*>.ensureSat(msg: () -> String) {
-    this.check().also { status ->
+fun KSolver<*>.ensureSat(timeout: Duration = Duration.INFINITE, msg: () -> String) {
+    this.check(timeout).also { status ->
         if (status != KSolverStatus.SAT) {
             throw IllegalStateException("Formula is $status, but expected: ${KSolverStatus.SAT}. ${msg()}")
         }
@@ -32,6 +33,31 @@ fun <S : KSort> KExpr<S>.isCovered(
 ): Boolean = (coverageSat + coverageUnsat).containsAll(universe)
 
 fun <T : Any> T.logger(): Logger = LoggerFactory.getLogger(javaClass)
+
+fun Logger.trace(msg: () -> String) {
+    if (isTraceEnabled)
+        trace(msg())
+}
+
+fun Logger.info(msg: () -> String) {
+    if (isInfoEnabled)
+        info(msg())
+}
+
+fun Logger.debug(msg: () -> String) {
+    if (isDebugEnabled)
+        debug(msg())
+}
+
+fun Logger.warn(msg: () -> String) {
+    if (isWarnEnabled)
+        warn(msg())
+}
+
+fun Logger.error(msg: () -> String) {
+    if (isErrorEnabled)
+        error(msg())
+}
 
 fun getOsName() = System.getProperty("os.name").lowercase()
 

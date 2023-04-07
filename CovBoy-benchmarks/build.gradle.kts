@@ -2,7 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
-    kotlin("kapt")
+    kotlin("plugin.serialization")
+//    kotlin("kapt")
     id("me.champeau.jmh")
 }
 
@@ -11,6 +12,7 @@ version = "1.0-SNAPSHOT"
 
 val ksmtVersion: String by extra
 val coroutinesVersion: String by extra
+val serializationVersion: String by extra
 val slf4jVersion: String by extra
 val logbackVersion: String by extra
 val jupiterParamsVersion: String by extra
@@ -28,8 +30,11 @@ dependencies {
     // coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
+    // serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
+
     jmhImplementation("org.openjdk.jmh:jmh-core:$jmhVersion")
-    kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
+//    kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 
     // logger
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
@@ -51,7 +56,7 @@ tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
 
-java {
+/*java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
-}
+}*/

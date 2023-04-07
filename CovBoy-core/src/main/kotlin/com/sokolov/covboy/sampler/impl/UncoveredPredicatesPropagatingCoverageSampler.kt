@@ -74,7 +74,7 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
                 ctx.mkOr(uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) })
             val uncoveredDisjunctionTrack = solver.assertAndTrack(uncoveredAssignmentsDisjunction)
 
-            when (solver.check(solverTimeout)) {
+            when (solver.checkWithTimeout()) {
                 KSolverStatus.SAT -> {
                     coverModel(solver.model())
                 }
