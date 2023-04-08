@@ -27,12 +27,12 @@ class BoolPredicatesExtractor(override val ctx: KContext) : KTransformer, Predic
 
     override fun <T : KSort, A : KSort> transformApp(expr: KApp<T, A>): KExpr<T> {
         if (expr.sort is KBoolSort && expr !is KTrue && expr !is KFalse) {
-            if (expr.args.any { it.sort is KBoolSort }) {
-                expr.args.forEach { if (it.sort is KBoolSort) it.accept(this) }
-            } else {
-                bools.add(expr.uncheckedCast())
-            }
+
+            bools.add(expr.uncheckedCast())
         }
+
+        expr.args.forEach { it.accept(this) }
+
         return expr
     }
 

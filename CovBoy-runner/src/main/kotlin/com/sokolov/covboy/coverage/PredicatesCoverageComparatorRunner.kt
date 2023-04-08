@@ -31,7 +31,7 @@ class PredicatesCoverageComparatorRunner {
             for (coverageCase in coverageCases) {
                 if (primarySolver !in coverageCase) continue
 
-                val ctx = KContext()
+                val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
                 (coverageCase.keys - primarySolver).forEach { secondarySolver ->
                     CoverageComparator.compare(

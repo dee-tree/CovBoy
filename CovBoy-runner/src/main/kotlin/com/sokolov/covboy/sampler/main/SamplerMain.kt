@@ -61,7 +61,7 @@ class SamplerMain {
             else
                 outCoverageFile.parentFile.mkdirs()
 
-            KContext().use { ctx ->
+            KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
 
                 val assertions = ctx.parseAssertions(smtLibFormulaFile)
 

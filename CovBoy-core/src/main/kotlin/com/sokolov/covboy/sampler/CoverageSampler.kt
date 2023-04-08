@@ -59,6 +59,9 @@ abstract class CoverageSampler<T : KSort> constructor(
         }
     }
 
+    protected val KExpr<T>.coveredSatValues: Set<KExpr<T>>
+        get() = currentCoverageSat.getValue(this)
+
     protected val KExpr<T>.coveredValues: Set<KExpr<T>>
         get() = currentCoverageSat.getValue(this) + currentCoverageUnsat.getValue(this)
 

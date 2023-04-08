@@ -7,7 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class IntPredicatesExtractorTest {
-    private val ctx = KContext()
+    private val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
 
     @Test

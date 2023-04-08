@@ -47,7 +47,7 @@ class SamplerRunnerTest {
             CoverageSamplerType.PredicatesPropagatingSampler //TODO: allow here to run another coverage sampler type
         )
 
-        val ctx = KContext()
+        val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
         val coverage = assertDoesNotThrow {
             PredicatesCoverage.deserialize<KBoolSort>(ctx, outputCoverageFile.inputStream())
         }
@@ -96,7 +96,7 @@ class SamplerRunnerTest {
         }
         // after process finished
 
-        val ctx = KContext()
+        val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
         val coverage = assertDoesNotThrow {
             PredicatesCoverage.deserialize<KBoolSort>(ctx, outputCoverageFile.inputStream())
         }

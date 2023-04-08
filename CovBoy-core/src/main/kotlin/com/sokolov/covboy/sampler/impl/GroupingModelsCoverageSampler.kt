@@ -1,5 +1,6 @@
 package com.sokolov.covboy.sampler.impl
 
+import com.sokolov.covboy.logger
 import com.sokolov.covboy.sampler.*
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
@@ -71,29 +72,34 @@ class GroupingModelsCoverageSampler<S : KSort>(
     private val assumptionToTrack = mutableMapOf<KExpr<KBoolSort>, KExpr<KBoolSort>>()
 
     override fun coverFormula() = with(ctx) {
+        var iter = 0
         while (!allPredicatesCovered) {
+            logger().trace("Iter ${iter++}")
             val thisStepUncoveredPredicates = uncoveredPredicates
 
-            val modelsGroup = takeModels(groupSize)
-            val covered = modelsGroup.map { coverModel(it) }.flatten()
+            val modelsGroup = takeModels(groupSize, commonModelsAssumptions)
+            val covered = modelsGroup.map { coverModel(it) }.also { logger().trace("Models: $it") }.flatten().toSet()
+
+            logger().trace("Covered: $covered")
+
+            if (covered.isEmpty()) {
+                logger().trace("No covered predicates!")
+            }
 
             if (modelsGroup.size < groupSize) {
+                logger().trace("ModelsGroup size is: ${modelsGroup.size}, but required: $groupSize")
                 /*
                  * no models left | Full coverage collected
                  */
 
                 if (commonModelsAssumptions.isEmpty()) {
-
-                    uncoveredPredicates.forEach { predicate ->
-                        (coverageUniverse - predicate.coveredValues).forEach { unsatValue ->
-                            coverPredicateWithUnsatValue(predicate, unsatValue)
-                        }
-                    }
-
+                    logger().trace("Break in modelgroup small")
                     break
                 }
 
-                commonModelsAssumptions.forEach(::disableAssumption)
+                logger().error("Reset assumptions")
+                commonModelsAssumptions.reversed().forEach(::disableAssumption)
+//                commonModelsAssumptions.forEach(::disableAssumption)
 
                 continue
             }
@@ -107,10 +113,13 @@ class GroupingModelsCoverageSampler<S : KSort>(
                 }
             }
 
+            logger().trace("Models conj: $commonModelAssignments")
+
             if (commonModelAssignments.isEmpty())
                 continue
 
-            val commonModelsConjunction = mkAnd(commonModelAssignments)
+            // TODO: think: conjunction or disjunction?
+            val commonModelsConjunction = mkOr(commonModelAssignments)
             val commonModelsAssumption = boolSort.mkFreshConst("cm_track")
             val assumedCommonModelsConjunction = commonModelsAssumption implies commonModelsConjunction
 
@@ -122,37 +131,14 @@ class GroupingModelsCoverageSampler<S : KSort>(
                 assumptionToTrack[commonModelsAssumption] = commonModelsTrack
             }
 
-            solver.checkWithAssumptions(
-                commonModelsAssumptions,
-                solverTimeout
-            ).process()
+            solver.checkWithAssumptionsAndTimeout(commonModelsAssumptions).process()
+        }
 
-
-            /*            for (predicate in uncoveredPredicates) {
-                            val value = modelsGroup.first().eval(predicate, completeModels)
-
-                            if (!completeModels && value !in coverageUniverse) {
-                                *//*
-                     * value of this term is not influence on formula satisfiability
-                     *//*
-                    (coverageUniverse - predicate.coveredValues).forEach {
-                        coverPredicateWithSatValue(predicate, it)
-                    }
-
-                    continue
-
-                } else {
-                    *//*
-                     * this term has sat-value
-                     *//*
-                    val otherModels = modelsGroup.drop(1)
-                    for (model in otherModels) {
-                        val otherValue = model.eval(predicate, completeModels)
-
-                    }
-                }
-            }*/
-
+        // cover unsat-values explicitly
+        uncoveredPredicates.forEach { predicate ->
+            (coverageUniverse - predicate.coveredValues).forEach { unsatValue ->
+                coverPredicateWithUnsatValue(predicate, unsatValue)
+            }
         }
     }
 
@@ -161,9 +147,13 @@ class GroupingModelsCoverageSampler<S : KSort>(
             KSolverStatus.UNSAT -> {
                 val unsatCore = solver.unsatCore().toHashSet()
 
+                logger().error("Reset assumptions")
                 for (i in commonModelsAssumptions.indices.reversed()) {
                     disableAssumption(commonModelsAssumptions[i])
                 }
+            }
+
+            else -> { /* TODO: remove this clause */
             }
         }
 

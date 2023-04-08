@@ -15,7 +15,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class UncoveredPredicatesPropagatingCoverageSamplerTest {
-    val ctx = KContext()
+    val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
     @ParameterizedTest
     @EnumSource(value = SolverType::class, names = ["Bitwuzla"], mode = EnumSource.Mode.EXCLUDE)

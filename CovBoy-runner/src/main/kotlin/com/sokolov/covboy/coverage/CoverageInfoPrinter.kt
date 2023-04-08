@@ -16,7 +16,7 @@ class CoverageInfoPrinter {
         fun printCoverageInfo(
             coverageFile: File
         ) {
-            val ctx = KContext()
+            val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
             val serializer = PredicatesCoverageSerializer(ctx)
 
             println("Coverage info on $coverageFile ---")

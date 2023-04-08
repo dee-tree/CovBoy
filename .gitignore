@@ -43,3 +43,4 @@ bin/
 /.idea/workspace.xml
 /coverage-sampler/input/
 /CovBoy-runner/data/benchmarks/
+/CovBoy-benchmarks/data/

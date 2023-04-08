@@ -22,7 +22,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GroupingModelsCoverageSamplerTest {
-    val ctx = KContext()
+    val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
     @ParameterizedTest
     @EnumSource(value = SolverType::class, names = ["Bitwuzla"], mode = EnumSource.Mode.EXCLUDE)
@@ -140,6 +140,7 @@ class GroupingModelsCoverageSamplerTest {
             predicates
         )
 
+        logger().trace("Before propagating coverage sampling")
         val propagatingCoverage = propagatingSampler.computeCoverage()
         logger().trace("Propagating coverage collected!")
 
@@ -153,16 +154,18 @@ class GroupingModelsCoverageSamplerTest {
     companion object {
 
         private val smtBenchmarkNames = listOf(
-            "a_and_b",
-            "a_or_b_or_c_or_d_or_etc",
-            "QF_BV_problem_1"
+//            "a_and_b",
+//            "a_or_b_or_c_or_d_or_etc",
+            "QF_BV_bv8_bv_cyclic_scheduler.2.prop1_cc_ref_max",
+//            "bitops7",
+//            "Sz128_2824"
         )
 
         private val smtBenchmarkSolvers = listOf(
-//            SolverType.Z3,
+            SolverType.Z3,
 //            SolverType.Bitwuzla,
 //            SolverType.Cvc5,
-            SolverType.Yices
+//            SolverType.Yices
         )
 
         @JvmStatic

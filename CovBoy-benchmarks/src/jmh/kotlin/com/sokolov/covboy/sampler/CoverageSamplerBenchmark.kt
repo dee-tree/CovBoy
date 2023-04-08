@@ -51,7 +51,7 @@ abstract class CoverageSamplerBenchmark {
 
     @Setup(Level.Iteration)
     fun initContext() {
-        ctx = KContext()
+        ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
     }
 
     @TearDown(Level.Iteration)

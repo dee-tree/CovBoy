@@ -26,7 +26,7 @@ open class CoverageSamplerBenchmark(
     val solverType: SolverType,
     val samplerType: CoverageSamplerType,
     val samplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
-    private val ctx: KContext = KContext()
+    private val ctx: KContext = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 ) {
 
     lateinit var sampler: CoverageSampler<KBoolSort>
@@ -38,6 +38,8 @@ open class CoverageSamplerBenchmark(
     private var currentBenchPreviousCheckSatCoveredValues = 0
 
     private lateinit var benchIterations: MutableList<SamplerBenchmarkData>
+
+//    private lateinit var previousCheckSatData: CheckSatData
 
     private fun createSampler(): CoverageSampler<KBoolSort> {
         val assertions = ctx.parseAssertions(inputFormula)
@@ -66,7 +68,9 @@ open class CoverageSamplerBenchmark(
                     benchIterDuration,
                     currentBenchCheckSats.size,
                     currentBenchCheckSats,
-                    sampler.coveragePredicates.size
+                    sampler.coveragePredicates.size,
+                    samplerType,
+                    solverType
                 )
             }
 
@@ -94,7 +98,7 @@ open class CoverageSamplerBenchmark(
 
 
     private fun onCheckSatMeasured(status: KSolverStatus, duration: Duration) {
-        val coveredValuesCount = samplerExt.coveredValuesCount
+        val coveredValuesCount = samplerExt.coveredSatValuesCount
         currentBenchCheckSats += CheckSatData(
             duration,
             status,

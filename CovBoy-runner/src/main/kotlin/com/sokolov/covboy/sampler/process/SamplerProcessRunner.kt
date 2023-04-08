@@ -58,7 +58,7 @@ class SamplerProcessRunner {
                         // sampling process crash :)
                         logger().warn("$solverType Coverage: process crashed! [$it] | [$smtLibFormulaFile]")
 
-                        KContext().use { ctx ->
+                        KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
                             PredicatesCoverageSamplingError(
                                 ProcessCrashed,
                                 "coverage sampling on solver [$solverType] crashed! Command: ${
@@ -78,7 +78,7 @@ class SamplerProcessRunner {
                         outCoverageFile.createNewFile()
                     }
 
-                    KContext().use { ctx ->
+                    KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
                         PredicatesCoverageSamplingError(
                             TimeoutExceeded,
                             "coverage sampling on solver [$solverType] timeout exceeded: $coverageSamplerTimeout",

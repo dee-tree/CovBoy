@@ -73,6 +73,7 @@ class BenchmarksSamplerRunner {
             dispatcher.close()
         }
 
+        // TODO: replace with BenchmarksSelector.getSatBenchmarksRecursively()
         @JvmStatic
         private fun getBenchmarksRecursively(
             benchmarksRootDir: File,

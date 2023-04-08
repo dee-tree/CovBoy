@@ -12,7 +12,7 @@ class CoverageComparator {
         fun compare(
             primaryCoverageInputStream: InputStream,
             secondaryCoverageInputStream: InputStream,
-            ctx: KContext = KContext(),
+            ctx: KContext = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY),
             onResult: (CoverageCompareStatus) -> Unit
         ) {
             val primaryInputStream = primaryCoverageInputStream.buffered()

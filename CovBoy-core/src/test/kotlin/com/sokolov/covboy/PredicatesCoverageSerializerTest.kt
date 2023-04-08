@@ -17,7 +17,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PredicatesCoverageSerializerTest {
-    private val ctx = KContext()
+    private val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
     @Test
     fun testInOutSerialization(): Unit = with(ctx) {

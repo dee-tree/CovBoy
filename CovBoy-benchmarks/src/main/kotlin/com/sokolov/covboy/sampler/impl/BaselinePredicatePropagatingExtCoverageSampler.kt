@@ -49,8 +49,7 @@ class BaselinePredicatePropagatingExtCoverageSampler<S : KSort>
         super.solver
     ) { status, duration -> onCheckSatMeasured(status, duration) }
 
-    // TODO: consider only sat-values
-    override val coveredValuesCount: Int
-        get() = coveragePredicates.sumOf { it.coveredValues.size }
+    override val coveredSatValuesCount: Int
+        get() = coveragePredicates.sumOf { it.coveredSatValues.size }
 
 }
