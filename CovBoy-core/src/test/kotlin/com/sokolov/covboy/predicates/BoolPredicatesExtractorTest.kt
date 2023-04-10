@@ -11,7 +11,7 @@ class BoolPredicatesExtractorTest {
 
 
     @Test
-    fun simpleTest(): Unit = with(ctx) {
+    fun boolTheorySimpleTest(): Unit = with(ctx) {
         val a by boolSort
         val b by boolSort
         val c by boolSort
@@ -20,6 +20,48 @@ class BoolPredicatesExtractorTest {
 
         BoolPredicatesExtractor(ctx).extractPredicates(f).also { actualPredicates ->
             assertEquals(setOf(a, b, c), actualPredicates)
+        }
+    }
+
+    @Test
+    fun intTheorySimpleTest(): Unit = with(ctx) {
+        val a by intSort
+        val b by intSort
+        val c by intSort
+        val boo by boolSort
+
+        val f = (a gt b) and (boo neq (b eq c)) and (boo eq (b neq c)) and ((c * 100.expr) gt b)
+
+        // b neq c = !(b eq c) ==> we expect b eq c
+        // we do not expect <Bool> and <Bool>, !<Bool> and other propositional
+        val expected = setOf(
+            a gt b,
+            b eq c,
+            (c * 100.expr) gt b,
+            boo
+        )
+
+        BoolPredicatesExtractor(ctx).extractPredicates(f).also { actualPredicates ->
+            assertEquals(expected, actualPredicates)
+        }
+    }
+
+    @Test
+    fun fpTheorySimpleTest(): Unit = with(ctx) {
+        val a by fp16Sort
+        val b by fp16Sort
+        val boo by boolSort
+
+        val f = mkFpGreaterExpr(mkFpAbsExpr(a), b) and (boo eq mkFpLessExpr(a, b)) and boo
+
+        val expected = setOf(
+            mkFpGreaterExpr(mkFpAbsExpr(a), b),
+            mkFpLessExpr(a, b),
+            boo
+        )
+
+        BoolPredicatesExtractor(ctx).extractPredicates(f).also { actualPredicates ->
+            assertEquals(expected, actualPredicates)
         }
     }
 
