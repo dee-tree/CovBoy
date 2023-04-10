@@ -51,6 +51,8 @@ data class SamplerBenchmarkData(
         writer.write(""" "Sampler (type)", """.trimStart())
         writer.write(""" "Solver (type)" """.trim())
         writer.newLine()
+
+        writer.flush()
     }
 
     private fun writeCsvContent(writer: BufferedWriter) {
@@ -67,6 +69,8 @@ data class SamplerBenchmarkData(
         writer.write("$solverType")
 
         writer.newLine()
+
+        writer.flush()
     }
 
     fun writeCsv(outputStream: OutputStream) {
@@ -77,4 +81,20 @@ data class SamplerBenchmarkData(
 
         writer.flush()
     }
+
+
+    companion object {
+        fun writeCsv(data: List<SamplerBenchmarkData>, outputStream: OutputStream) {
+            if (data.isEmpty()) return
+
+            val writer = outputStream.bufferedWriter()
+            data.first().writeCsvTitle(writer)
+            data.forEach { it.writeCsvContent(writer) }
+        }
+    }
+
+}
+
+fun List<SamplerBenchmarkData>.writeCsv(outputStream: OutputStream) {
+    SamplerBenchmarkData.writeCsv(this, outputStream)
 }

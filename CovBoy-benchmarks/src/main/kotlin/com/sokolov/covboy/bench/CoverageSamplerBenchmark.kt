@@ -39,7 +39,12 @@ open class CoverageSamplerBenchmark(
 
     private lateinit var benchIterations: MutableList<SamplerBenchmarkData>
 
-//    private lateinit var previousCheckSatData: CheckSatData
+    /*
+     * store previous check-sat to associate covered predicates for the previous call
+     * check-sat1 -> cover1() -> check-sat2
+     * We need to have covered predicates count for cover1 and put it to check-sat1 data
+     */
+    private lateinit var previousCheckSatData: CheckSatData
 
     private fun createSampler(): CoverageSampler<KBoolSort> {
         val assertions = ctx.parseAssertions(inputFormula)
@@ -90,6 +95,10 @@ open class CoverageSamplerBenchmark(
 
     protected open fun measure() {
         sampler.computeCoverage()
+
+        // add last check-sat data
+        val coveredValuesByThisStep = samplerExt.coveredSatValuesCount - currentBenchPreviousCheckSatCoveredValues
+        currentBenchCheckSats += previousCheckSatData.copy(coveredPredicates = coveredValuesByThisStep)
     }
 
     protected open fun afterMeasure() {
@@ -99,10 +108,16 @@ open class CoverageSamplerBenchmark(
 
     private fun onCheckSatMeasured(status: KSolverStatus, duration: Duration) {
         val coveredValuesCount = samplerExt.coveredSatValuesCount
-        currentBenchCheckSats += CheckSatData(
+        val coveredValuesByThisStep = coveredValuesCount - currentBenchPreviousCheckSatCoveredValues
+
+        if (::previousCheckSatData.isInitialized) {
+            currentBenchCheckSats += previousCheckSatData.copy(coveredPredicates = coveredValuesByThisStep)
+        }
+
+        previousCheckSatData = CheckSatData(
             duration,
             status,
-            coveredValuesCount - currentBenchPreviousCheckSatCoveredValues
+            coveredValuesByThisStep
         )
         currentBenchPreviousCheckSatCoveredValues = coveredValuesCount
     }
