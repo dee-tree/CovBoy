@@ -1,10 +1,6 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-//    kotlin("kapt")
-    id("me.champeau.jmh")
 }
 
 group = "com.sokolov"
@@ -23,8 +19,9 @@ dependencies {
 
     implementation(projects.covBoyCore)
 
-    // ksmt core
+    // ksmt
     implementation("com.github.UnitTestBot.ksmt:ksmt-core:$ksmtVersion")
+    implementation("com.github.UnitTestBot.ksmt:ksmt-z3:$ksmtVersion")
     implementation("com.github.UnitTestBot.ksmt:ksmt-runner:$ksmtVersion")
 
     // coroutines
@@ -32,9 +29,6 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-
-    jmhImplementation("org.openjdk.jmh:jmh-core:$jmhVersion")
-//    kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 
     // logger
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
@@ -51,12 +45,3 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
-}
-
-/*java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}*/

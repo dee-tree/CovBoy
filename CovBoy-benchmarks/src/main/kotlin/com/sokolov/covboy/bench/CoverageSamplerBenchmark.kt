@@ -46,7 +46,7 @@ open class CoverageSamplerBenchmark(
      */
     private lateinit var previousCheckSatData: CheckSatData
 
-    private fun createSampler(): CoverageSampler<KBoolSort> {
+    protected open fun createSampler(): CoverageSampler<KBoolSort> {
         val assertions = ctx.parseAssertions(inputFormula)
 
         val predicates = BoolPredicatesExtractor(ctx).extractPredicates(assertions)
