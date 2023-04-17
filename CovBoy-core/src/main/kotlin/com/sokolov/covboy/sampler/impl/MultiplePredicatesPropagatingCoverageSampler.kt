@@ -66,8 +66,9 @@ open class MultiplePredicatesPropagatingCoverageSampler<S : KSort> : CoverageSam
 
             val uncoveredAssignments = uncoveredPredicates.map { it to (coverageUniverse - it.coveredValues).first() }
 
-            val uncoveredAssignmentsDisjunction =
-                ctx.mkOr(uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) })
+            val uncoveredAssignmentsDisjunction = ctx.mkOr(
+                uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) }
+            )
 
             solver.assert(uncoveredAssignmentsDisjunction)
 

@@ -2,7 +2,6 @@ package com.sokolov.covboy.sampler
 
 import com.sokolov.covboy.coverage.PredicatesCoverage
 import com.sokolov.covboy.ensureSat
-import com.sokolov.covboy.isCovered
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
 import org.ksmt.KContext
@@ -52,7 +51,6 @@ abstract class CoverageSampler<T : KSort> constructor(
             put(predicate, hashSetOf())
         }
     }
-
     private val currentCoverageUnsat = HashMap<KExpr<T>, HashSet<KExpr<T>>>(coveragePredicates.size).apply {
         coveragePredicates.forEach { predicate ->
             put(predicate, hashSetOf())
@@ -61,7 +59,6 @@ abstract class CoverageSampler<T : KSort> constructor(
 
     protected val KExpr<T>.coveredSatValues: Set<KExpr<T>>
         get() = currentCoverageSat.getValue(this)
-
     protected val KExpr<T>.coveredValues: Set<KExpr<T>>
         get() = currentCoverageSat.getValue(this) + currentCoverageUnsat.getValue(this)
 
@@ -85,58 +82,51 @@ abstract class CoverageSampler<T : KSort> constructor(
         )
     }
 
+    private val uncoveredPredicatesCache = coveragePredicates.toHashSet()
+
     protected val allPredicatesCovered: Boolean
-        get() = coveragePredicates.all { it.isCovered }
+        get() = uncoveredPredicatesCache.isEmpty()
+
 
     val KExpr<T>.isCovered: Boolean
-        get() = isCovered(
-            currentCoverageSat.getValue(this),
-            currentCoverageUnsat.getValue(this),
-            coverageUniverse
-        )
+        get() = this !in uncoveredPredicatesCache
 
-    protected val uncoveredPredicates: List<KExpr<T>>
-        get() = coveragePredicates.filter { !it.isCovered }
-
-    protected val uncoveredPredicatesSeq: Sequence<KExpr<T>>
-        get() = coveragePredicates.asSequence().filter { !it.isCovered }
-
-//    protected val anyUncoveredAssignments: List<KEqExpr<T>>
-//        get() = uncoveredPredicates.map { ctx.mkEq(it.expr, it.getAnyUncoveredValue()) }
+    protected val uncoveredPredicates: Set<KExpr<T>>
+        get() = uncoveredPredicatesCache
 
     protected fun coverModel(model: KModel): List<Pair<KExpr<T>, KExpr<T>>> = buildList {
-        uncoveredPredicates
-            .forEach { predicate ->
-                val value = model.eval(predicate, isComplete = completeModels)
+        uncoveredPredicatesCache.toList().forEach { predicate ->
+            val value = model.eval(predicate, isComplete = completeModels)
 
-                if (!completeModels && value !in coverageUniverse) {
-                    /*
-                     * value of this term is not influence on formula satisfiability
-                     */
+            if (!completeModels && value !in coverageUniverse) {
+                /*
+                 * value of this term is not influence on formula satisfiability
+                 */
 
-                    (coverageUniverse - predicate.coveredValues).forEach {
-                        if (it !in predicate.coveredValues) {
-                            add(predicate to it)
-                            coverPredicateWithSatValue(predicate, it)
-                        }
-                    }
-                } else {
-                    /*
-                     * this term has sat-value
-                     */
-
-                    if (value !in predicate.coveredValues) {
-                        add(predicate to value)
-                        coverPredicateWithSatValue(predicate, value)
+                (coverageUniverse - predicate.coveredValues).forEach {
+                    if (it !in predicate.coveredValues) {
+                        add(predicate to it)
+                        coverPredicateWithSatValueWithoutCacheUpdate(predicate, it)
                     }
                 }
+                uncoveredPredicatesCache -= predicate
+            } else {
+                /*
+                 * this term has sat-value
+                 */
+
+                if (value !in predicate.coveredValues) {
+                    add(predicate to value)
+                    coverPredicateWithSatValue(predicate, value)
+                }
             }
+        }
     }
 
     /**
      * @return `true` if [lhs] wasn't covered by [rhs] before the call
      */
-    protected fun coverPredicateWithSatValue(lhs: KExpr<T>, rhs: KExpr<T>): Boolean {
+    private fun coverPredicateWithSatValueWithoutCacheUpdate(lhs: KExpr<T>, rhs: KExpr<T>): Boolean {
         val exprUnsatValues = currentCoverageUnsat.getValue(lhs)
 
         if (lhs in exprUnsatValues) return false
@@ -145,9 +135,21 @@ abstract class CoverageSampler<T : KSort> constructor(
         return exprSatValues.add(rhs)
     }
 
+    /**
+     * @return `true` if [lhs] wasn't covered by [rhs] before the call
+     */
+    protected fun coverPredicateWithSatValue(lhs: KExpr<T>, rhs: KExpr<T>): Boolean =
+        coverPredicateWithSatValueWithoutCacheUpdate(lhs, rhs).also { coveredNow ->
+            if (coveredNow && lhs.coveredValues == coverageUniverse)
+                uncoveredPredicatesCache -= lhs
+        }
+
 
     protected fun coverPredicateWithUnsatValue(lhs: KExpr<T>, rhs: KExpr<T>) {
         currentCoverageUnsat.getValue(lhs) += rhs
+
+        if (lhs.coveredValues == coverageUniverse)
+            uncoveredPredicatesCache -= lhs
     }
 
     protected fun takeModels(count: Int, assumptions: List<KExpr<KBoolSort>> = emptyList()): List<KModel> = buildList {
@@ -184,6 +186,7 @@ abstract class CoverageSampler<T : KSort> constructor(
     override fun close() {
         currentCoverageUnsat.clear()
         currentCoverageSat.clear()
+        uncoveredPredicatesCache.clear()
         solver.close()
     }
 

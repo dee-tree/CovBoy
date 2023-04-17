@@ -50,7 +50,7 @@ open class BaselinePredicatePropagatingCoverageSampler<S : KSort> : CoverageSamp
         while (!allPredicatesCovered) {
             solver.push()
 
-            val predicate = uncoveredPredicatesSeq.first()
+            val predicate = uncoveredPredicates.first()
             val value = (coverageUniverse - predicate.coveredValues).first()
 
             solver.assert(ctx.mkEq(predicate, value))
