@@ -91,7 +91,10 @@ class SamplerRunnerTest {
                 outputCoverageFile,
                 coroutineContext = this.coroutineContext,
                 coverageSamplerType = CoverageSamplerType.PredicatesPropagatingSampler, // TODO: test all CoverageSamplerType
-                coverageSamplerParams = CoverageSamplerParams.build { putSamplerTimeoutMillis(5.seconds.inWholeMilliseconds) }
+                coverageSamplerParams = CoverageSamplerParams.build {
+                    putSolverTimeoutMillis(10)
+                    putSamplerTimeoutMillis(5.seconds.inWholeMilliseconds)
+                }
             )
         }
         // after process finished
