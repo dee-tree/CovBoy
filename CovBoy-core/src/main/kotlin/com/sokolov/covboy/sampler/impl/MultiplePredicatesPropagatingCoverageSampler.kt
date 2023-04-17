@@ -1,7 +1,7 @@
 package com.sokolov.covboy.sampler.impl
 
 import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
-import com.sokolov.covboy.sampler.*
+import com.sokolov.covboy.sampler.CoverageSampler
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
@@ -10,9 +10,6 @@ import org.ksmt.solver.KSolverStatus
 import org.ksmt.sort.KBoolSort
 import org.ksmt.sort.KSort
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-
 
 /**
  * a: ?, b: ?, c: ? |
@@ -28,23 +25,24 @@ import kotlin.time.Duration.Companion.seconds
  *
  * repeat for uncovered values
  */
-class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
-    solverType: SolverType,
-    ctx: KContext,
-    assertions: List<KExpr<KBoolSort>>,
-    coverageUniverse: Set<KExpr<S>>,
-    coveragePredicates: Set<KExpr<S>>,
-    completeModels: Boolean = true,
-    solverTimeout: Duration = 1.seconds
-) : CoverageSampler<S>(
-    solverType,
-    ctx,
-    assertions,
-    coverageUniverse,
-    coveragePredicates,
-    completeModels,
-    solverTimeout
-) {
+open class MultiplePredicatesPropagatingCoverageSampler<S : KSort> : CoverageSampler<S> {
+    constructor(
+        solverType: SolverType,
+        ctx: KContext,
+        assertions: List<KExpr<KBoolSort>>,
+        coverageUniverse: Set<KExpr<S>>,
+        coveragePredicates: Set<KExpr<S>>,
+        completeModels: Boolean = DEFAULT_COMPLETE_MODELS,
+        solverTimeout: Duration = DEFAULT_SOLVER_TIMEOUT
+    ) : super(
+        solverType,
+        ctx,
+        assertions,
+        coverageUniverse,
+        coveragePredicates,
+        completeModels,
+        solverTimeout
+    )
 
     constructor(
         solverType: SolverType,
@@ -53,18 +51,16 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
         coverageUniverse: Set<KExpr<S>>,
         coveragePredicates: Set<KExpr<S>>,
         params: CoverageSamplerParams
-    ) : this(
+    ) : super(
         solverType,
         ctx,
         assertions,
         coverageUniverse,
         coveragePredicates,
-        if (params.hasCompleteModelsParam()) params.getCompleteModelsParam() else DEFAULT_COMPLETE_MODELS,
-        if (params.hasSolverTimeoutMillisParam()) params.getSolverTimeoutMillisParam().milliseconds else DEFAULT_SOLVER_TIMEOUT
+        params
     )
 
     override fun coverFormula() {
-
         while (!allPredicatesCovered) {
             solver.push()
 
@@ -72,7 +68,8 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
 
             val uncoveredAssignmentsDisjunction =
                 ctx.mkOr(uncoveredAssignments.map { (lhs, rhs) -> ctx.mkEq(lhs, rhs) })
-            val uncoveredDisjunctionTrack = solver.assertAndTrack(uncoveredAssignmentsDisjunction)
+
+            solver.assert(uncoveredAssignmentsDisjunction)
 
             when (solver.checkWithTimeout()) {
                 KSolverStatus.SAT -> {
@@ -80,9 +77,6 @@ class UncoveredPredicatesPropagatingCoverageSampler<S : KSort>(
                 }
 
                 KSolverStatus.UNSAT -> {
-                    val unsatCore = solver.unsatCore()
-                    check(uncoveredDisjunctionTrack in unsatCore)
-
                     uncoveredAssignments.forEach { (lhs, rhs) ->
                         coverPredicateWithUnsatValue(lhs, rhs)
                     }

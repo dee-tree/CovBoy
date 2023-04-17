@@ -7,7 +7,7 @@ import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
 import com.sokolov.covboy.predicates.integer.IntPredicatesExtractor
 import com.sokolov.covboy.predicates.integer.transformIntPredicates
 import com.sokolov.covboy.sampler.impl.GroupingModelsCoverageSampler
-import com.sokolov.covboy.sampler.impl.UncoveredPredicatesPropagatingCoverageSampler
+import com.sokolov.covboy.sampler.impl.MultiplePredicatesPropagatingCoverageSampler
 import kotlinx.coroutines.*
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -132,7 +132,7 @@ class GroupingModelsCoverageSamplerTest {
             predicates
         )
 
-        val propagatingSampler = UncoveredPredicatesPropagatingCoverageSampler(
+        val propagatingSampler = MultiplePredicatesPropagatingCoverageSampler(
             solverType,
             ctx,
             assertions,

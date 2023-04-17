@@ -5,6 +5,7 @@ import com.sokolov.covboy.isLinux
 import com.sokolov.covboy.isWindows
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.util.concurrent.Executors
@@ -86,8 +87,10 @@ class ProcessRunnerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = [1, 5, 10, 20])
+    @ValueSource(ints = [1, 2, 4, 8, 12])
     fun testParallelProcessRunTimeout(processesCount: Int) {
+        assumeTrue(processesCount <= Runtime.getRuntime().availableProcessors())
+
         val command = delayCommand(5)
         var timeoutExceededCallbackCalledTimes = 0
         val dispatcher = Executors

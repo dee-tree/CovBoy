@@ -4,7 +4,7 @@ import com.sokolov.covboy.predicates.bool.BoolPredicatesExtractor
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
 import com.sokolov.covboy.predicates.integer.IntPredicatesExtractor
 import com.sokolov.covboy.predicates.integer.transformIntPredicates
-import com.sokolov.covboy.sampler.impl.UncoveredPredicatesPropagatingCoverageSampler
+import com.sokolov.covboy.sampler.impl.MultiplePredicatesPropagatingCoverageSampler
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.ksmt.KContext
@@ -14,7 +14,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class UncoveredPredicatesPropagatingCoverageSamplerTest {
+class MultiplePredicatesPropagatingCoverageSamplerTest {
     val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
     @ParameterizedTest
@@ -31,7 +31,7 @@ class UncoveredPredicatesPropagatingCoverageSamplerTest {
         val boolPredicatesExtractor = BoolPredicatesExtractor(ctx)
         val predicates = boolPredicatesExtractor.extractPredicates(listOf(f1, f2))
 
-        val sampler = UncoveredPredicatesPropagatingCoverageSampler(
+        val sampler = MultiplePredicatesPropagatingCoverageSampler(
             solverType,
             ctx,
             listOf(f1, f2),
@@ -61,10 +61,7 @@ class UncoveredPredicatesPropagatingCoverageSamplerTest {
         val intPredicates = intPredicatesExtractor.extractPredicates(listOf(f))
         val transformedPredicates = transformIntPredicates(intPredicates)
 
-        println("int predicates: $intPredicates")
-        println("transformed predicates: $transformedPredicates")
-
-        val sampler = UncoveredPredicatesPropagatingCoverageSampler(
+        val sampler = MultiplePredicatesPropagatingCoverageSampler(
             solverType,
             ctx,
             listOf(f),

@@ -1,6 +1,7 @@
 package com.sokolov.covboy.sampler
 
 import com.sokolov.covboy.sampler.impl.BaselinePredicatePropagatingExtCoverageSampler
+import com.sokolov.covboy.sampler.impl.MultiplePredicatesPropagatingExtCoverageSampler
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
@@ -29,7 +30,15 @@ fun <S : KSort> CoverageSamplerType.makeCoverageSamplerExt(
         onCheckSatMeasured
     )
 
-    CoverageSamplerType.PredicatesPropagatingSampler -> TODO()
+    CoverageSamplerType.PredicatesPropagatingSampler -> MultiplePredicatesPropagatingExtCoverageSampler(
+        solverType,
+        ctx,
+        assertions,
+        coverageUniverse,
+        coveragePredicates,
+        params,
+        onCheckSatMeasured
+    )
 
     CoverageSamplerType.GroupingModelsSampler -> TODO()
 }

@@ -2,7 +2,7 @@ package com.sokolov.covboy.sampler
 
 import com.sokolov.covboy.sampler.impl.BaselinePredicatePropagatingCoverageSampler
 import com.sokolov.covboy.sampler.impl.GroupingModelsCoverageSampler
-import com.sokolov.covboy.sampler.impl.UncoveredPredicatesPropagatingCoverageSampler
+import com.sokolov.covboy.sampler.impl.MultiplePredicatesPropagatingCoverageSampler
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
@@ -27,7 +27,7 @@ fun <S : KSort> CoverageSamplerType.makeCoverageSampler(
         params
     )
 
-    CoverageSamplerType.PredicatesPropagatingSampler -> UncoveredPredicatesPropagatingCoverageSampler(
+    CoverageSamplerType.PredicatesPropagatingSampler -> MultiplePredicatesPropagatingCoverageSampler(
         solverType,
         ctx,
         assertions,
