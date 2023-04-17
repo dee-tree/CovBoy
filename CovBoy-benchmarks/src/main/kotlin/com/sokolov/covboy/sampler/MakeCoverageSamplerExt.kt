@@ -20,7 +20,7 @@ fun <S : KSort> CoverageSamplerType.makeCoverageSamplerExt(
     params: CoverageSamplerParams = CoverageSamplerParams.Empty,
     onCheckSatMeasured: (KSolverStatus, Duration) -> Unit = { _, _ -> },
 ): CoverageSampler<S> = when (this) {
-    CoverageSamplerType.BaselinePredicatePropagating -> BaselinePredicatePropagatingExtCoverageSampler(
+    CoverageSamplerType.BaselinePredicatePropagatingSampler -> BaselinePredicatePropagatingExtCoverageSampler(
         solverType,
         ctx,
         assertions,

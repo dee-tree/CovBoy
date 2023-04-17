@@ -22,7 +22,7 @@ Options:
 * `-PcoverageDir=/path/to/coverage/to/save` - internal structure of files preserved as benchmarks dir
 * `-PsamplerType=baseline` - type of coverage sampler. Possible
   values: `baseline` / `PredicatesPropagatingSampler` / `GroupingModelsSampler`. *baseline*
-  is `PredicatesPropagatingSampler`
+  is `BaselinePredicatePropagatingSampler`
 * `-PsamplerParams=samplerParams,separated,with,commas`:
   * `--solverTimeoutMillis=1000` - timeout on solver checkSat(), in millis
   * `--PsamplerTimeoutMillis=60000` - timeout on coverage sampling, in millis

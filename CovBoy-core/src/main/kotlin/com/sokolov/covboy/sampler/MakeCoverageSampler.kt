@@ -18,7 +18,7 @@ fun <S : KSort> CoverageSamplerType.makeCoverageSampler(
     coveragePredicates: Set<KExpr<S>>,
     params: CoverageSamplerParams
 ): CoverageSampler<S> = when (this) {
-    CoverageSamplerType.BaselinePredicatePropagating -> BaselinePredicatePropagatingCoverageSampler(
+    CoverageSamplerType.BaselinePredicatePropagatingSampler -> BaselinePredicatePropagatingCoverageSampler(
         solverType,
         ctx,
         assertions,

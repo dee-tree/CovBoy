@@ -91,7 +91,7 @@ class ProcessRunnerTest {
     fun testParallelProcessRunTimeout(processesCount: Int) {
         assumeTrue(processesCount <= Runtime.getRuntime().availableProcessors())
 
-        val command = delayCommand(5)
+        val command = delayCommand(10)
         var timeoutExceededCallbackCalledTimes = 0
         val dispatcher = Executors
             .newFixedThreadPool(Runtime.getRuntime().availableProcessors())

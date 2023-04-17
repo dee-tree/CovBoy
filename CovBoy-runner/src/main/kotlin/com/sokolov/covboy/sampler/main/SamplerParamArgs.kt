@@ -14,7 +14,7 @@ open class SamplerParamArgs(parser: ArgParser) {
 
     val coverageSamplerType by parser.mapping(
         "--${CoverageSamplerType.PredicatesPropagatingSampler}" to CoverageSamplerType.PredicatesPropagatingSampler,
-        "--baseline" to CoverageSamplerType.PredicatesPropagatingSampler,
+        "--baseline" to CoverageSamplerType.BaselinePredicatePropagatingSampler,
         "--${CoverageSamplerType.GroupingModelsSampler}" to CoverageSamplerType.GroupingModelsSampler,
         help = "Name of the coverage sampler type. Possible variants: ${
             CoverageSamplerType.values().joinToString(" / ")
