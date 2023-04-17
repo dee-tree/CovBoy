@@ -56,11 +56,21 @@ abstract class CoverageSampler<T : KSort> constructor(
             put(predicate, hashSetOf())
         }
     }
+    private val currentCoverageUnknowns = HashMap<KExpr<T>, HashSet<KExpr<T>>>(coveragePredicates.size).apply {
+        coveragePredicates.forEach { predicate ->
+            put(predicate, hashSetOf())
+        }
+    }
 
     protected val KExpr<T>.coveredSatValues: Set<KExpr<T>>
         get() = currentCoverageSat.getValue(this)
     protected val KExpr<T>.coveredValues: Set<KExpr<T>>
         get() = currentCoverageSat.getValue(this) + currentCoverageUnsat.getValue(this)
+
+    fun isUnknownPredicateValue(
+        predicate: KExpr<T>,
+        value: KExpr<T>
+    ): Boolean = value in currentCoverageUnknowns.getValue(predicate)
 
     protected abstract fun coverFormula()
 
@@ -92,7 +102,7 @@ abstract class CoverageSampler<T : KSort> constructor(
         get() = this !in uncoveredPredicatesCache
 
     protected val uncoveredPredicates: Set<KExpr<T>>
-        get() = uncoveredPredicatesCache
+        get() = uncoveredPredicatesCache.toSet()
 
     protected fun coverModel(model: KModel): List<Pair<KExpr<T>, KExpr<T>>> = buildList {
         uncoveredPredicatesCache.toList().forEach { predicate ->
@@ -110,6 +120,7 @@ abstract class CoverageSampler<T : KSort> constructor(
                     }
                 }
                 uncoveredPredicatesCache -= predicate
+                currentCoverageUnknowns.getValue(predicate).clear()
             } else {
                 /*
                  * this term has sat-value
@@ -131,6 +142,7 @@ abstract class CoverageSampler<T : KSort> constructor(
 
         if (lhs in exprUnsatValues) return false
 
+        currentCoverageUnknowns.getValue(lhs) -= rhs
         val exprSatValues = currentCoverageSat.getValue(lhs)
         return exprSatValues.add(rhs)
     }
@@ -147,9 +159,14 @@ abstract class CoverageSampler<T : KSort> constructor(
 
     protected fun coverPredicateWithUnsatValue(lhs: KExpr<T>, rhs: KExpr<T>) {
         currentCoverageUnsat.getValue(lhs) += rhs
+        currentCoverageUnknowns.getValue(lhs) -= rhs
 
         if (lhs.coveredValues == coverageUniverse)
             uncoveredPredicatesCache -= lhs
+    }
+
+    protected fun markAsUnknown(predicate: KExpr<T>, value: KExpr<T>) {
+        currentCoverageUnknowns.getValue(predicate) += value
     }
 
     protected fun takeModels(count: Int, assumptions: List<KExpr<KBoolSort>> = emptyList()): List<KModel> = buildList {

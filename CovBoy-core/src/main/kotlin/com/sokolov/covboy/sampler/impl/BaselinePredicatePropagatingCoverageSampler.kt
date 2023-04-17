@@ -1,6 +1,5 @@
 package com.sokolov.covboy.sampler.impl
 
-import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.sampler.CoverageSampler
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
@@ -50,8 +49,13 @@ open class BaselinePredicatePropagatingCoverageSampler<S : KSort> : CoverageSamp
         while (!allPredicatesCovered) {
             solver.push()
 
-            val predicate = uncoveredPredicates.first()
-            val value = (coverageUniverse - predicate.coveredValues).first()
+            val predicate = uncoveredPredicates.first { predicate ->
+                (coverageUniverse - predicate.coveredValues).any {
+                    !isUnknownPredicateValue(predicate, it)
+                }
+            }
+
+            val value = (coverageUniverse - predicate.coveredValues).first { !isUnknownPredicateValue(predicate, it) }
 
             solver.assert(ctx.mkEq(predicate, value))
 
@@ -61,10 +65,13 @@ open class BaselinePredicatePropagatingCoverageSampler<S : KSort> : CoverageSamp
                 }
 
                 KSolverStatus.UNSAT -> {
-                    coverPredicateWithUnsatValue(predicate, value)
+                    if (value !in predicate.coveredValues)
+                        coverPredicateWithUnsatValue(predicate, value)
                 }
 
-                KSolverStatus.UNKNOWN -> throw UnknownSolverStatusOnCoverageSamplingException("Unknown on propagating [$value] on predicate $predicate")
+                KSolverStatus.UNKNOWN -> {
+                    markAsUnknown(predicate, value)
+                }
             }
 
             solver.pop()
