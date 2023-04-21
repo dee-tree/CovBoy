@@ -73,19 +73,19 @@ class CoverageInfoPrinter {
 
             println("Successful covered:\n${
                 successfulCountBySolverType.entries.joinToString("\n") { (solver, count) ->
-                    "$solver: $count"
+                    "\t$solver: $count"
                 }
             }")
 
             println("Errors totally (solvers):\n${
                 errorsCountBySolverType.entries.joinToString("\n") { (solver, count) ->
-                    "$solver: $count"
+                    "\t$solver: $count"
                 }
             }")
 
             println("Errors totally (reasons):\n${
                 errorsCountByReasons.entries.joinToString("\n") { (reason, count) ->
-                    "$reason: $count"
+                    "\t$reason: $count"
                 }
             }")
 
