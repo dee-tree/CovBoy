@@ -1,8 +1,8 @@
 package com.sokolov.covboy.runner
 
-import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.bench.CoverageSamplerBenchmark
 import com.sokolov.covboy.sampler.CoverageSamplerType
+import com.sokolov.covboy.sampler.exceptions.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.putSolverTimeoutMillis
 import kotlinx.serialization.json.Json

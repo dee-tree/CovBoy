@@ -1,11 +1,12 @@
 package com.sokolov.covboy.sampler.main
 
-import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import com.sokolov.covboy.parseAssertions
 import com.sokolov.covboy.predicates.bool.BoolPredicatesExtractor
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
 import com.sokolov.covboy.sampler.*
+import com.sokolov.covboy.sampler.exceptions.UnknownSolverStatusOnCoverageSamplingException
+import com.sokolov.covboy.sampler.exceptions.UnsuitableFormulaCoverageSamplingException
 import com.sokolov.covboy.sampler.impl.getModelsGroupSizeParam
 import com.sokolov.covboy.sampler.impl.hasModelsGroupSizeParam
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
@@ -83,6 +84,15 @@ class SamplerMain {
                     PredicatesCoverageSamplingError(
                         PredicatesCoverageSamplingError.Reasons.UnknownDuringSampling,
                         e.stackTraceToString(),
+                        solverType
+                    ).serialize(
+                        ctx,
+                        outCoverageFile.outputStream()
+                    )
+                } catch (e: UnsuitableFormulaCoverageSamplingException) {
+                    PredicatesCoverageSamplingError(
+                        PredicatesCoverageSamplingError.Reasons.InitiallyUnsuitableFormulaSatisfiability,
+                        e.message.toString(),
                         solverType
                     ).serialize(
                         ctx,

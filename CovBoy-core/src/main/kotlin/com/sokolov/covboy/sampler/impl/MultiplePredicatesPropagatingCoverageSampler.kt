@@ -1,7 +1,7 @@
 package com.sokolov.covboy.sampler.impl
 
-import com.sokolov.covboy.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.sampler.CoverageSampler
+import com.sokolov.covboy.sampler.exceptions.UnknownSolverStatusOnCoverageSamplingException
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr

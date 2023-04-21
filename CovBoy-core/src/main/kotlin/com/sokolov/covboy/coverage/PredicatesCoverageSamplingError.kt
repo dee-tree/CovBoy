@@ -11,7 +11,7 @@ data class PredicatesCoverageSamplingError(
     val solverType: SolverType
 ) {
     enum class Reasons {
-        UnknownDuringSampling, ProcessCrashed, TimeoutExceeded, Other
+        UnknownDuringSampling, ProcessCrashed, TimeoutExceeded, Other, InitiallyUnsuitableFormulaSatisfiability
     }
 
     fun serialize(ctx: KContext, out: OutputStream) = with(PredicatesCoverageSerializer(ctx)) {

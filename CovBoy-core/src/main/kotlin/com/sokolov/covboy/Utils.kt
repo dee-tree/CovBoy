@@ -1,5 +1,6 @@
 package com.sokolov.covboy
 
+import com.sokolov.covboy.sampler.exceptions.UnsuitableFormulaCoverageSamplingException
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
 import org.ksmt.solver.KSolver
@@ -15,7 +16,7 @@ import kotlin.time.Duration
 fun KSolver<*>.ensureSat(timeout: Duration = Duration.INFINITE, msg: () -> String) {
     this.check(timeout).also { status ->
         if (status != KSolverStatus.SAT) {
-            throw IllegalStateException("Formula is $status, but expected: ${KSolverStatus.SAT}. ${msg()}")
+            throw UnsuitableFormulaCoverageSamplingException("Formula is $status, but expected: ${KSolverStatus.SAT}. ${msg()}")
         }
     }
 }
