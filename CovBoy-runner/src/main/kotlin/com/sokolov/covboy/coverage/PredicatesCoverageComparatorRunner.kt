@@ -80,7 +80,7 @@ class PredicatesCoverageComparatorRunner {
             }
             ?: emptyMap()
 
-        private fun getCoverageFileCases(rootCoverageDir: File): List<Map<SolverType, File>> =
+        fun getCoverageFileCases(rootCoverageDir: File): List<Map<SolverType, File>> =
             getCoverageDirsRecursively(rootCoverageDir).map {
                 getCoverageCase(it)
             }
