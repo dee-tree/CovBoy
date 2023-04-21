@@ -50,7 +50,6 @@ class SamplerProcessRunner {
             processCommand.asProcessRunner().run(
                 timeout = coverageSamplerTimeout,
                 onComplete = {
-
                     if (outCoverageFile.exists()) {
                         logger().info("$solverType Coverage: process completed [$it] | [$smtLibFormulaFile] ")
 

@@ -6,7 +6,9 @@ import com.jetbrains.rd.framework.readEnum
 import com.jetbrains.rd.framework.writeEnum
 import org.ksmt.KAst
 import org.ksmt.KContext
+import org.ksmt.expr.KConst
 import org.ksmt.expr.KExpr
+import org.ksmt.expr.transformer.KNonRecursiveTransformer
 import org.ksmt.runner.generated.models.SolverType
 import org.ksmt.runner.serializer.AstDeserializer
 import org.ksmt.runner.serializer.AstSerializationCtx
@@ -21,6 +23,8 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
     private enum class FieldMark {
         CoverageSat, CoverageUnsat, CoverageUniverse, SolverType
     }
+
+    private val declFreshFixTransformer = DeclFreshFixTransformer()
 
     fun <S : KSort> PredicatesCoverage<S>.serialize(out: OutputStream) {
         val sCtx = AstSerializationCtx()
@@ -127,11 +131,11 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         val coverageSat = HashMap<KExpr<S>, Set<KExpr<S>>>(coverageSatSize)
 
         repeat(coverageSatSize) {
-            val key = deserializer.deserializeAst()
+            val key = deserializer.deserializeAstFix()
             val valuesSize = buffer.readInt()
 
             val values = HashSet<KExpr<S>>(valuesSize)
-            repeat(valuesSize) { values += deserializer.deserializeAst().uncheckedCast<KAst, KExpr<S>>() }
+            repeat(valuesSize) { values += deserializer.deserializeAstFix().uncheckedCast<KAst, KExpr<S>>() }
 
             coverageSat[key.uncheckedCast()] = values
         }
@@ -146,11 +150,11 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         val coverageUnsat = HashMap<KExpr<S>, Set<KExpr<S>>>(coverageUnsatSize)
 
         repeat(coverageUnsatSize) {
-            val key = deserializer.deserializeAst()
+            val key = deserializer.deserializeAstFix()
             val valuesSize = buffer.readInt()
 
             val values = HashSet<KExpr<S>>(valuesSize)
-            repeat(valuesSize) { values += deserializer.deserializeAst().uncheckedCast<KAst, KExpr<S>>() }
+            repeat(valuesSize) { values += deserializer.deserializeAstFix().uncheckedCast<KAst, KExpr<S>>() }
 
             coverageUnsat[key.uncheckedCast()] = values
         }
@@ -165,7 +169,7 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         val coverageUniverse = HashSet<KExpr<S>>(coverageUniverseSize)
 
         repeat(coverageUniverseSize) {
-            coverageUniverse += deserializer.deserializeAst().uncheckedCast<KAst, KExpr<S>>()
+            coverageUniverse += deserializer.deserializeAstFix().uncheckedCast<KAst, KExpr<S>>()
         }
 
         // read SolverType
@@ -237,4 +241,23 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         private val FAILED_COVERAGE_CODE = -1 // on any errors during sampling
     }
 
+    /**
+     * Use it to deserialize AST instead of [AstDeserializer.deserializeAstFix()]
+     * until behaviour of newly created declaration (fresh) will be fixed in ksmt
+     *
+     * TODO: Remove it after FIX deserializer in ksmt
+     */
+    fun AstDeserializer.deserializeAstFix(): KAst = deserializeAst().let { ast ->
+        (ast as? KExpr<*>)?.let { declFreshFixTransformer.apply(it) } ?: ast
+    }
+
+
+    private inner class DeclFreshFixTransformer : KNonRecursiveTransformer(ctx) {
+        override fun <T : KSort> transform(expr: KConst<T>): KExpr<T> {
+            val freshMarkIdx = expr.decl.name.lastIndexOf("!fresh!")
+            return if (freshMarkIdx == -1)
+                super.transform(expr)
+            else ctx.mkConst(expr.decl.name.substring(0 until freshMarkIdx), expr.sort)
+        }
+    }
 }

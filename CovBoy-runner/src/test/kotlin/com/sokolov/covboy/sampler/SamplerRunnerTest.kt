@@ -26,7 +26,7 @@ class SamplerRunnerTest {
     lateinit var tempDir: File
 
     @ParameterizedTest
-    @EnumSource(value = SolverType::class)
+    @EnumSource(value = SolverType::class, names = ["Custom"], mode = EnumSource.Mode.EXCLUDE)
     fun testSamplerRun(solverType: SolverType) {
         val input = File.createTempFile("smtlib2-formula", null, tempDir)
         input.writeText(
@@ -70,7 +70,7 @@ class SamplerRunnerTest {
 
 
     @ParameterizedTest
-    @EnumSource(value = SolverType::class)
+    @EnumSource(value = SolverType::class, names = ["Custom"], mode = EnumSource.Mode.EXCLUDE)
     fun testSamplerRunProcess(solverType: SolverType) {
         val input = File.createTempFile("smtlib2-formula", null, tempDir)
         input.writeText(

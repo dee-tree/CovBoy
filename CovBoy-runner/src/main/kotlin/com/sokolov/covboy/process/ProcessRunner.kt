@@ -19,7 +19,7 @@ value class ProcessRunner(val commandWithArgs: List<String>) {
         onComplete: (Process) -> Unit = {},
         onTimeoutExceeded: (Process) -> Unit = {},
         ctx: CoroutineContext = Dispatchers.IO
-    ) = withContext(Dispatchers.IO) {
+    ) = withContext(ctx) {
 
         launch(ctx) {
             val process = ProcessBuilder().command(commandWithArgs).inheritIO().start()

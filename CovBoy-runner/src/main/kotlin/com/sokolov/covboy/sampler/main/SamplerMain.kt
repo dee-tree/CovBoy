@@ -65,7 +65,6 @@ class SamplerMain {
 
                 val assertions = ctx.parseAssertions(smtLibFormulaFile)
 
-                // TODO: extend with int predicates
                 val predicates = BoolPredicatesExtractor(ctx).extractPredicates(assertions)
 
                 val sampler = coverageSamplerType.makeCoverageSampler(
@@ -78,7 +77,7 @@ class SamplerMain {
                 )
 
                 try {
-                    val coverage = sampler.computeCoverage()
+                    val coverage = sampler.use { it.computeCoverage() }
                     coverage.serialize(ctx, outCoverageFile.outputStream())
                 } catch (e: UnknownSolverStatusOnCoverageSamplingException) {
                     PredicatesCoverageSamplingError(

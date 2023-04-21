@@ -18,7 +18,7 @@ class MultiplePredicatesPropagatingCoverageSamplerTest {
     val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
 
     @ParameterizedTest
-    @EnumSource(value = SolverType::class, names = ["Bitwuzla"], mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = SolverType::class, names = ["Bitwuzla", "Custom"], mode = EnumSource.Mode.EXCLUDE)
     fun testSimple(solverType: SolverType): Unit = with(ctx) {
         val a by boolSort
         val b by boolSort
@@ -51,7 +51,7 @@ class MultiplePredicatesPropagatingCoverageSamplerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = SolverType::class, names = ["Bitwuzla"], mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = SolverType::class, names = ["Bitwuzla", "Custom"], mode = EnumSource.Mode.EXCLUDE)
     fun testSimpleInt(solverType: SolverType): Unit = with(ctx) {
         val i by intSort
 
