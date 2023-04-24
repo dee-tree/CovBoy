@@ -18,6 +18,7 @@ val jmhVersion: String by extra
 dependencies {
 
     implementation(projects.covBoyCore)
+    implementation(projects.covBoyRunner)
 
     // ksmt
     implementation("com.github.UnitTestBot.ksmt:ksmt-core:$ksmtVersion")

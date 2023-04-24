@@ -108,7 +108,7 @@ abstract class CoverageSampler<T : KSort> constructor(
         uncoveredPredicatesCache.toList().forEach { predicate ->
             val value = model.eval(predicate, isComplete = completeModels)
 
-            if (!completeModels && value !in coverageUniverse) {
+            if (!completeModels && (value !in coverageUniverse)) {
                 /*
                  * value of this term is not influence on formula satisfiability
                  */

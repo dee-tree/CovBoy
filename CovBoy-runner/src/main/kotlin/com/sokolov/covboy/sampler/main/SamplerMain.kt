@@ -1,7 +1,6 @@
 package com.sokolov.covboy.sampler.main
 
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
-import com.sokolov.covboy.parseAssertions
 import com.sokolov.covboy.predicates.bool.BoolPredicatesExtractor
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
 import com.sokolov.covboy.sampler.*
@@ -64,7 +63,7 @@ class SamplerMain {
 
             KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
 
-                val assertions = ctx.parseAssertions(smtLibFormulaFile)
+                val assertions = ctx.preprocessCoverageSamplerAssertions(smtLibFormulaFile)
 
                 val predicates = BoolPredicatesExtractor(ctx).extractPredicates(assertions)
 

@@ -1,6 +1,7 @@
 package com.sokolov.covboy.sampler.benchmarks
 
 import com.sokolov.covboy.logger
+import com.sokolov.covboy.sampler.BenchmarkDataPreprocessor
 import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.process.SamplerProcessRunner
@@ -37,7 +38,7 @@ class BenchmarksSamplerRunner {
             coverageSamplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
             rewriteResults: Boolean = false
         ) {
-            val benchmarks = getBenchmarksRecursively(benchmarksDir)
+            val benchmarks = BenchmarkDataPreprocessor.parseBenchmarks(benchmarksDir)
 
             // TODO: dispatcher: by solvers count or by processors count?
             val dispatcher = Executors
@@ -45,7 +46,7 @@ class BenchmarksSamplerRunner {
                 .asCoroutineDispatcher()
 
             benchmarks.forEachIndexed { benchIdx, benchFile ->
-                logger().info("Collect coverage [${benchIdx + 1} / ${benchmarks.size}] on file [$benchFile]")
+                logger().info("Collect coverage [${benchIdx + 1}] on file [$benchFile]")
 
                 runBlocking {
                     for (solverType: SolverType in solvers) {
@@ -72,23 +73,6 @@ class BenchmarksSamplerRunner {
 
             dispatcher.close()
         }
-
-        // TODO: replace with BenchmarksSelector.getSatBenchmarksRecursively()
-        @JvmStatic
-        private fun getBenchmarksRecursively(
-            benchmarksRootDir: File,
-            filter: (File) -> Boolean = { true }
-        ): List<File> = benchmarksRootDir
-            .walk()
-            .filter { file: File ->
-                file.isFile
-                        && file.extension == "smt2"
-                        && "(set-info :status unsat)" !in file.readText()
-            }
-
-            .toList()
-            .filter(filter)
-
 
         @JvmStatic
         fun getCoverageFile(

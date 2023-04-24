@@ -18,6 +18,7 @@ dependencies {
     implementation(projects.covBoyCore)
 
     implementation("com.github.UnitTestBot.ksmt:ksmt-core:$ksmtVersion")
+    implementation("com.github.UnitTestBot.ksmt:ksmt-z3:$ksmtVersion")
     implementation("com.github.UnitTestBot.ksmt:ksmt-runner:$ksmtVersion")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")

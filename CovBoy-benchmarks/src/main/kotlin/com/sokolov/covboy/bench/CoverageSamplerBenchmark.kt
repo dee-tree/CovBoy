@@ -2,13 +2,9 @@ package com.sokolov.covboy.bench
 
 import com.sokolov.covboy.data.CheckSatData
 import com.sokolov.covboy.data.SamplerBenchmarkData
-import com.sokolov.covboy.parseAssertions
 import com.sokolov.covboy.predicates.bool.BoolPredicatesExtractor
 import com.sokolov.covboy.predicates.bool.mkBoolPredicatesUniverse
-import com.sokolov.covboy.sampler.CoverageSampler
-import com.sokolov.covboy.sampler.CoverageSamplerExt
-import com.sokolov.covboy.sampler.CoverageSamplerType
-import com.sokolov.covboy.sampler.makeCoverageSamplerExt
+import com.sokolov.covboy.sampler.*
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import org.ksmt.KContext
 import org.ksmt.runner.generated.models.SolverType
@@ -47,7 +43,7 @@ open class CoverageSamplerBenchmark(
     private lateinit var previousCheckSatData: CheckSatData
 
     protected open fun createSampler(): CoverageSampler<KBoolSort> {
-        val assertions = ctx.parseAssertions(inputFormula)
+        val assertions = ctx.preprocessCoverageSamplerAssertions(inputFormula)
 
         val predicates = BoolPredicatesExtractor(ctx).extractPredicates(assertions)
 
