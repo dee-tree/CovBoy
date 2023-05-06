@@ -1,8 +1,11 @@
 package com.sokolov.covboy.sampler.benchmarks
 
 import com.sokolov.covboy.logger
+import com.sokolov.covboy.process.ParserWorkerProcess
+import com.sokolov.covboy.process.TestWorker
 import com.sokolov.covboy.sampler.BenchmarkDataPreprocessor
 import com.sokolov.covboy.sampler.preprocessCoverageSamplerAssertions
+import com.sokolov.covboy.sampler.preprocessCoverageSamplerAssertionsAsync
 import com.sokolov.covboy.trace
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
@@ -13,11 +16,15 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
+import org.ksmt.runner.core.KsmtWorkerArgs
+import org.ksmt.runner.core.KsmtWorkerFactory
+import org.ksmt.runner.core.KsmtWorkerPool
+import org.ksmt.runner.core.RdServer
+import org.ksmt.runner.generated.models.TestProtocolModel
 import org.ksmt.solver.KSolver
 import org.ksmt.solver.KSolverStatus
 import org.ksmt.solver.async.KAsyncSolver
 import org.ksmt.solver.runner.KSolverRunnerManager
-import org.ksmt.solver.z3.KZ3SMTLibParser
 import org.ksmt.solver.z3.KZ3Solver
 import org.ksmt.sort.KBoolSort
 import java.io.File
@@ -40,10 +47,20 @@ class BenchmarksExtractor {
                 KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
                     val solverManager = KSolverRunnerManager(
                         workerPoolSize = threadsCount,
-                        hardTimeout = checkSatTimeout * 10
+                        hardTimeout = checkSatTimeout * 5
                     )
 
-                    val parser = KZ3SMTLibParser(ctx)
+                    val workers = KsmtWorkerPool(
+                        maxWorkerPoolSize = threadsCount,
+                        initializationTimeout = KSolverRunnerManager.SOLVER_WORKER_INITIALIZATION_TIMEOUT,
+                        workerProcessIdleTimeout = KSolverRunnerManager.DEFAULT_WORKER_PROCESS_IDLE_TIMEOUT,
+                        workerFactory = object : KsmtWorkerFactory<TestProtocolModel> {
+                            override val childProcessEntrypoint = ParserWorkerProcess::class
+                            override fun mkWorker(id: Int, process: RdServer) = TestWorker(id, process)
+                            override fun updateArgs(args: KsmtWorkerArgs): KsmtWorkerArgs = args
+                        }
+                    )
+
                     val dispatcher = Executors.newFixedThreadPool(threadsCount).asCoroutineDispatcher()
 
                     runBlocking {
@@ -60,11 +77,11 @@ class BenchmarksExtractor {
 
                                 .map { file ->
                                     scope.async(dispatcher) {
-                                        val assertions = //parser //parsersPool.borrow { parser ->
-                                            kotlin.runCatching {
-                                                ctx.preprocessCoverageSamplerAssertions(file, parser)
-                                            }
-                                                /*}*/.onFailure { return@async null }.getOrThrow()
+                                        val assertions = kotlin.runCatching {
+                                            ctx.preprocessCoverageSamplerAssertionsAsync(file, workers, checkSatTimeout)
+                                        }
+                                            .onFailure { logger().trace("Exception on parse: $it"); return@async null }
+                                            .getOrThrow()
 
                                         val solver = solverManager.createSolver(ctx, KZ3Solver::class)
                                         val satisfiesTimeout = satisfiesCheckTimeoutAsync(

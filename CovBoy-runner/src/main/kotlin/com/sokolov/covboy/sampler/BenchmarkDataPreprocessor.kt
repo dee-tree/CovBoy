@@ -1,16 +1,16 @@
 package com.sokolov.covboy.sampler
 
-import com.microsoft.z3.BoolExpr
 import com.sokolov.covboy.parseAssertions
+import com.sokolov.covboy.process.ParserRunner
 import com.sokolov.covboy.sampler.exceptions.UnsuitableFormulaCoverageSamplingException
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
-import org.ksmt.parser.KSMTLibParser
+import org.ksmt.runner.core.KsmtWorkerPool
+import org.ksmt.runner.generated.models.TestProtocolModel
 import org.ksmt.solver.KSolverStatus
-import org.ksmt.solver.z3.KZ3Context
-import org.ksmt.solver.z3.KZ3ExprConverter
 import org.ksmt.sort.KBoolSort
 import java.io.File
+import kotlin.time.Duration
 
 class BenchmarkDataPreprocessor {
 
@@ -45,37 +45,15 @@ class BenchmarkDataPreprocessor {
             return assertions
         }
 
-        private fun KZ3Context.convertAssertions(assertions: List<BoolExpr>, ctx: KContext): List<KExpr<KBoolSort>> {
-            val converter = KZ3ExprConverter(ctx, this)
-            return with(converter) { assertions.map { nativeContext.unwrapAST(it).convertExpr() } }
-        }
-
-        /*@OptIn(ExperimentalTime::class)
-        fun parseSmtLibFile(smtLibFile: File, ctx: KContext): List<KExpr<KBoolSort>> {
-            val z3Ctx = KZ3Context(ctx)
-            val assertions = measureTimedValue {
-                z3Ctx.nativeContext.parseSMTLIB2File(
-                    smtLibFile.toPath().absolutePathString(),
-                    emptyArray(),
-                    emptyArray(),
-                    emptyArray(),
-                    emptyArray()
-                )
-            }.also { logger().warn("Assertions parse time: ${it.duration} for file: ${smtLibFile.absolutePath}") }.value
-
-            val result = z3Ctx.convertAssertions(assertions.toList(), ctx)
-            measureTime { z3Ctx.close() }.also { logger().warn("z3Ctx close time: $it for file: ${smtLibFile.absolutePath}") }
-            return result
-        }*/
-
         /**
          * @see preprocessCoverageSamplerAssertions
          */
         @JvmStatic
-        fun preprocessCoverageSamplerAssertions(
+        suspend fun preprocessCoverageSamplerAssertionsAsync(
             benchmark: File,
             ctx: KContext,
-            parser: KSMTLibParser
+            workersPool: KsmtWorkerPool<TestProtocolModel>,
+            timeout: Duration
         ): List<KExpr<KBoolSort>> {
             // in case of no satisfiability info in file -> throws [IllegalStateException]
 
@@ -84,12 +62,24 @@ class BenchmarkDataPreprocessor {
             if (status == KSolverStatus.UNKNOWN)
                 throw UnsuitableFormulaCoverageSamplingException("UNKNOWN formula in benchmark file ${benchmark.absolutePath}")
 
+            val worker = workersPool.getOrCreateFreeWorker()
+            worker.astSerializationCtx.initCtx(ctx)
+            worker.lifetime.onTermination {
+                worker.astSerializationCtx.resetCtx()
+            }
 
-            val assertions = parser.parse(benchmark.toPath()).let {
-//            val assertions = parseSmtLibFile(benchmark, ctx).let {
-                if (status == KSolverStatus.UNSAT)
-                    with(ctx) { listOf(!mkAnd(it)) }
-                else it
+            val parserRunner = ParserRunner(ctx, timeout, worker)
+            val assertions: List<KExpr<KBoolSort>>
+            try {
+                parserRunner.init()
+                assertions = parserRunner.parseSmtLibFile(benchmark.toPath()).let {
+                    if (status == KSolverStatus.UNSAT)
+                        with(ctx) { listOf(!mkAnd(it)) }
+                    else it
+                }
+            } finally {
+                parserRunner.delete()
+                worker.release()
             }
 
             return assertions
@@ -131,5 +121,8 @@ class BenchmarkDataPreprocessor {
 fun KContext.preprocessCoverageSamplerAssertions(benchmark: File) =
     BenchmarkDataPreprocessor.preprocessCoverageSamplerAssertions(benchmark, this)
 
-fun KContext.preprocessCoverageSamplerAssertions(benchmark: File, parser: KSMTLibParser) =
-    BenchmarkDataPreprocessor.preprocessCoverageSamplerAssertions(benchmark, this, parser)
+suspend fun KContext.preprocessCoverageSamplerAssertionsAsync(
+    benchmark: File,
+    workersPool: KsmtWorkerPool<TestProtocolModel>,
+    timeout: Duration
+) = BenchmarkDataPreprocessor.preprocessCoverageSamplerAssertionsAsync(benchmark, this, workersPool, timeout)
