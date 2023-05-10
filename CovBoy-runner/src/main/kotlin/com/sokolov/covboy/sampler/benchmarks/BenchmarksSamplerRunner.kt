@@ -8,7 +8,9 @@ import com.sokolov.covboy.sampler.process.SamplerProcessRunner
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.ksmt.runner.generated.models.SolverType
 import java.io.File
 import java.util.concurrent.Executors
@@ -38,40 +40,71 @@ class BenchmarksSamplerRunner {
             coverageSamplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
             rewriteResults: Boolean = false
         ) {
-            val benchmarks = BenchmarkDataPreprocessor.parseBenchmarks(benchmarksDir)
+            val benchmarks = BenchmarkDataPreprocessor.parseBenchmarks(benchmarksDir).toList()
 
             // TODO: dispatcher: by solvers count or by processors count?
             val dispatcher = Executors
                 .newFixedThreadPool(Runtime.getRuntime().availableProcessors())
                 .asCoroutineDispatcher()
 
-            benchmarks.forEachIndexed { benchIdx, benchFile ->
-                logger().info("Collect coverage [${benchIdx + 1}] on file [$benchFile]")
+            val solversDispatcher = Executors
+                .newFixedThreadPool(solvers.size)
+                .asCoroutineDispatcher()
 
-                runBlocking {
+            runBlocking {
+                withContext(solversDispatcher) {
                     for (solverType: SolverType in solvers) {
-                        val coverageFile = getCoverageFile(benchFile, solverType, benchmarksDir, coveragesDir)
-
-                        if (coverageFile.exists() && !rewriteResults) {
-                            logger().info("Skip $solverType coverage on $benchFile")
-                            continue
+                        launch {
+                            withContext(dispatcher) {
+                                runBenchmarksSampler(
+                                    benchmarksDir,
+                                    benchmarks,
+                                    coveragesDir,
+                                    solverType,
+                                    coverageSamplerType,
+                                    coverageSamplerParams,
+                                    rewriteResults
+                                )
+                            }
                         }
-
-                        logger().info("Run sampler process $solverType on benchmark [$benchFile]")
-
-                        SamplerProcessRunner.runSamplerSmtLibAnotherProcess(
-                            solverType = solverType,
-                            smtLibFormulaFile = benchFile,
-                            outCoverageFile = coverageFile,
-                            coroutineContext = this.coroutineContext + dispatcher,
-                            coverageSamplerType = coverageSamplerType,
-                            coverageSamplerParams = coverageSamplerParams
-                        )
                     }
                 }
+
             }
 
+            solversDispatcher.close()
             dispatcher.close()
+        }
+
+        private suspend fun runBenchmarksSampler(
+            benchmarksDir: File,
+            benchmarks: List<File>,
+            coveragesDir: File,
+            solver: SolverType,
+            coverageSamplerType: CoverageSamplerType,
+            coverageSamplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
+            rewriteResults: Boolean = false
+        ) {
+            benchmarks.forEachIndexed { benchIdx, benchFile ->
+                logger().info("[$solver]: Collect coverage [${benchIdx + 1}] on file [$benchFile]")
+                val coverageFile = getCoverageFile(benchFile, solver, benchmarksDir, coveragesDir)
+
+                if (coverageFile.exists() && !rewriteResults) {
+                    logger().info("[$solver]: Skip covering on $benchFile due to rewrite = false")
+                    return@forEachIndexed // continue
+                }
+
+                logger().info("[$solver]: Run coverage process on file [$benchFile]")
+
+                SamplerProcessRunner.runSamplerSmtLibAnotherProcess(
+                    solverType = solver,
+                    smtLibFormulaFile = benchFile,
+                    outCoverageFile = coverageFile,
+                    coverageSamplerType = coverageSamplerType,
+                    coverageSamplerParams = coverageSamplerParams
+                )
+
+            }
         }
 
         @JvmStatic

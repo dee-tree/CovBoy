@@ -1,5 +1,6 @@
 package com.sokolov.covboy.sampler.process
 
+import com.jetbrains.rd.util.TimeoutException
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError.Reasons.ProcessCrashed
 import com.sokolov.covboy.coverage.PredicatesCoverageSamplingError.Reasons.TimeoutExceeded
@@ -9,11 +10,9 @@ import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.main.SamplerMain
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
-import kotlinx.coroutines.Dispatchers
 import org.ksmt.KContext
 import org.ksmt.runner.generated.models.SolverType
 import java.io.File
-import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
@@ -29,7 +28,6 @@ class SamplerProcessRunner {
             outCoverageFile: File,
             coverageSamplerType: CoverageSamplerType,
             coverageSamplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
-            coroutineContext: CoroutineContext = Dispatchers.IO
         ) {
             val samplerMainClassName = SamplerMain::class.qualifiedName ?: SamplerMain::class.java.name
             val mainArgs = SamplerMain.makeArgs(
@@ -47,49 +45,44 @@ class SamplerProcessRunner {
                 coverageSamplerParams.getSamplerTimeoutMillisParam().milliseconds
             else DEFAULT_SAMPLER_TIMEOUT
 
-            processCommand.asProcessRunner().run(
-                timeout = coverageSamplerTimeout,
-                onComplete = {
-                    if (outCoverageFile.exists()) {
-                        logger().info("$solverType Coverage: process completed [$it] | [$smtLibFormulaFile] ")
+            try {
+                processCommand.asProcessRunner().run(coverageSamplerTimeout)
 
-                    } else {
-                        // sampling process crash :)
-                        logger().warn("$solverType Coverage: process crashed! [$it] | [$smtLibFormulaFile]")
+                if (outCoverageFile.exists()) {
+                    logger().info("[$solverType] Coverage: process completed on $smtLibFormulaFile ")
 
-                        KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
-                            PredicatesCoverageSamplingError(
-                                ProcessCrashed,
-                                "coverage sampling on solver [$solverType] crashed! Command: ${
-                                    processCommand.joinToString(" ")
-                                }",
-                                solverType
-                            ).serialize(ctx, outCoverageFile.outputStream())
-                        }
-                    }
-
-                },
-                onTimeoutExceeded = {
-                    logger().warn("$solverType Coverage: process killed on timeout $coverageSamplerTimeout. [$it] | [$smtLibFormulaFile]")
-
-                    if (outCoverageFile.exists()) {
-                        outCoverageFile.delete()
-                        outCoverageFile.createNewFile()
-                    }
+                } else {
+                    // sampling process crash :)
+                    logger().warn("[$solverType] Coverage: process crashed on $smtLibFormulaFile")
 
                     KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
-                        PredicatesCoverageSamplingError(
-                            TimeoutExceeded,
-                            "coverage sampling on solver [$solverType] timeout exceeded: $coverageSamplerTimeout",
-                            solverType
-                        ).serialize(
-                            ctx,
-                            outCoverageFile.outputStream()
-                        )
+
+                        val errorMsg = "coverage sampling on solver [$solverType] crashed! Command: ${
+                            processCommand.joinToString(" ")
+                        }"
+
+                        PredicatesCoverageSamplingError(ProcessCrashed, errorMsg, solverType).apply {
+                            serialize(ctx, outCoverageFile.outputStream())
+                        }
                     }
-                },
-                ctx = coroutineContext
-            )
+                }
+            } catch (e: TimeoutException) {
+                logger().warn("[$solverType] Coverage: process killed on timeout $coverageSamplerTimeout on $smtLibFormulaFile")
+
+                if (outCoverageFile.exists()) {
+                    outCoverageFile.delete()
+                    outCoverageFile.createNewFile()
+                }
+
+                KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY).use { ctx ->
+                    PredicatesCoverageSamplingError(
+                        TimeoutExceeded,
+                        "coverage sampling on solver [$solverType] timeout exceeded: $coverageSamplerTimeout",
+                        solverType
+                    ).serialize(ctx, outCoverageFile.outputStream())
+                }
+            }
+
         }
     }
 

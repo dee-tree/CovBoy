@@ -1,11 +1,11 @@
 package com.sokolov.covboy.process
 
 import com.sokolov.covboy.logger
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.CoroutineContext
+import java.util.concurrent.TimeoutException
 import kotlin.time.Duration
 
 @JvmInline
@@ -16,23 +16,16 @@ value class ProcessRunner(val commandWithArgs: List<String>) {
 
     suspend fun run(
         timeout: Duration = Duration.INFINITE,
-        onComplete: (Process) -> Unit = {},
-        onTimeoutExceeded: (Process) -> Unit = {},
-        ctx: CoroutineContext = Dispatchers.IO
-    ) = withContext(ctx) {
+    ) = coroutineScope {
+        val process = ProcessBuilder().command(commandWithArgs).inheritIO().start()
+        val finishedOnTimeout = async { process.waitFor(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS) }
 
-        launch(ctx) {
-            val process = ProcessBuilder().command(commandWithArgs).inheritIO().start()
-            val finishedOnTimeout = process.waitFor(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
-
-            if (!finishedOnTimeout) {
-                logger().warn("Kill process $process on exceeded timeout ($timeout)")
-                process.destroyForcibly()
-                process.waitFor() // wait destroying stage
-                onTimeoutExceeded(process)
-            } else {
-                onComplete(process)
-            }
+        if (!finishedOnTimeout.await()) {
+            logger().warn("Kill process $process on exceeded timeout ($timeout)")
+            process.destroyForcibly()
+            // TODO: maybe remove waitFor() after process destroyForcibly()
+            launch { process.waitFor() }.join() // wait destroying stage
+            throw TimeoutException("Process $process exceeded timeout ($timeout)")
         }
     }
 }
