@@ -43,7 +43,8 @@ class BenchmarksSamplerRunner {
 
             // TODO: dispatcher: by solvers count or by processors count?
             val dispatcher = Executors
-                .newFixedThreadPool(Runtime.getRuntime().availableProcessors())
+//                .newFixedThreadPool(Runtime.getRuntime().availableProcessors())
+                .newFixedThreadPool(solvers.size)
                 .asCoroutineDispatcher()
 
             val solversDispatcher = Executors

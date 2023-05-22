@@ -30,10 +30,12 @@ class SamplerProcessRunner {
             coverageSamplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
             memoryLimit: Int = 4096 // RAM, in MB
         ) {
+            val containerName = "cov${Thread.currentThread().id}"
             val processCommand = listOfNotNull(
                 "docker",
                 "run",
                 "--rm",
+                "--name=$containerName",
                 "--memory=${memoryLimit}M",
                 "--memory-swap=${memoryLimit}M",
                 "-e", "IN_BENCH=$smtLibFormulaFile",
@@ -78,6 +80,8 @@ class SamplerProcessRunner {
                 }
             } catch (e: TimeoutException) {
                 logger().warn("[$solverType] Coverage: process killed on timeout $coverageSamplerTimeout on $smtLibFormulaFile")
+
+                "docker kill $containerName".split(' ').asProcessRunner().run()
 
                 if (outCoverageFile.exists()) {
                     outCoverageFile.delete()
