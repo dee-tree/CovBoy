@@ -83,7 +83,7 @@ open class MultiplePredicatesPropagatingCoverageSampler<S : KSort> : CoverageSam
                     }
                 }
 
-                KSolverStatus.UNKNOWN -> throw UnknownSolverStatusOnCoverageSamplingException("Unknown on asserting $uncoveredAssignments")
+                KSolverStatus.UNKNOWN -> throw UnknownSolverStatusOnCoverageSamplingException("Unknown on asserting expr")
             }
 
             solver.pop()

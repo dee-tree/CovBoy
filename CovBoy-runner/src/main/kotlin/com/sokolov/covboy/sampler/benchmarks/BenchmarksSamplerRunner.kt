@@ -1,7 +1,6 @@
 package com.sokolov.covboy.sampler.benchmarks
 
 import com.sokolov.covboy.logger
-import com.sokolov.covboy.sampler.BenchmarkDataPreprocessor
 import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.process.SamplerProcessRunner
@@ -96,12 +95,13 @@ class BenchmarksSamplerRunner {
 
                 logger().info("[$solver]: Run coverage process on file [$benchFile]")
 
-                SamplerProcessRunner.runSamplerSmtLibAnotherProcess(
+                SamplerProcessRunner.runSamplerSmtLibContainerWithMemLimit(
                     solverType = solver,
                     smtLibFormulaFile = benchFile,
                     outCoverageFile = coverageFile,
                     coverageSamplerType = coverageSamplerType,
-                    coverageSamplerParams = coverageSamplerParams
+                    coverageSamplerParams = coverageSamplerParams,
+                    memoryLimit = 4096
                 )
 
             }
