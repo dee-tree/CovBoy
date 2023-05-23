@@ -4,6 +4,7 @@ import com.sokolov.covboy.logger
 import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.process.SamplerProcessRunner
+import com.sokolov.covboy.statistics.*
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -47,32 +48,25 @@ class BenchmarksSamplerRunner {
                 .newFixedThreadPool(solvers.size)
                 .asCoroutineDispatcher()
 
-            val solversDispatcher = Executors
-                .newFixedThreadPool(solvers.size)
-                .asCoroutineDispatcher()
-
             runBlocking {
-                withContext(solversDispatcher) {
-                    for (solverType: SolverType in solvers) {
-                        launch {
-                            withContext(dispatcher) {
-                                runBenchmarksSampler(
-                                    benchmarksDir,
-                                    benchmarks,
-                                    coveragesDir,
-                                    solverType,
-                                    coverageSamplerType,
-                                    coverageSamplerParams,
-                                    rewriteResults
-                                )
-                            }
+                for (solverType: SolverType in solvers) {
+                    launch {
+                        withContext(dispatcher) {
+                            runBenchmarksSampler(
+                                benchmarksDir,
+                                benchmarks,
+                                coveragesDir,
+                                solverType,
+                                coverageSamplerType,
+                                coverageSamplerParams,
+                                rewriteResults
+                            )
                         }
                     }
                 }
 
             }
 
-            solversDispatcher.close()
             dispatcher.close()
         }
 
@@ -94,14 +88,34 @@ class BenchmarksSamplerRunner {
                     return@forEachIndexed // continue
                 }
 
+                var newParams = coverageSamplerParams.copy()
+
+                if (coverageSamplerParams.hasStatisticsParam() && coverageSamplerParams.getStatisticsParam()) {
+                    val statisticsDir = File(coverageSamplerParams.getStatisticsFileParam())
+                    val statisticsFile = getStatisticsFile(benchFile, solver, benchmarksDir, statisticsDir)
+
+                    newParams += CoverageSamplerParams.build {
+                        putStatistics(true)
+                        putStatisticsFile(statisticsFile.absolutePath)
+                    }
+                }
+
                 logger().info("[$solver]: Run coverage process on file [$benchFile]")
+
+                /*SamplerProcessRunner.runSamplerSmtLibAnotherProcess(
+                    solverType = solver,
+                    smtLibFormulaFile = benchFile,
+                    outCoverageFile = coverageFile,
+                    coverageSamplerType = coverageSamplerType,
+                    coverageSamplerParams = newParams,
+                )*/
 
                 SamplerProcessRunner.runSamplerSmtLibContainerWithMemLimit(
                     solverType = solver,
                     smtLibFormulaFile = benchFile,
                     outCoverageFile = coverageFile,
                     coverageSamplerType = coverageSamplerType,
-                    coverageSamplerParams = coverageSamplerParams,
+                    coverageSamplerParams = newParams,
                     memoryLimit = 4096
                 )
 
@@ -120,6 +134,20 @@ class BenchmarksSamplerRunner {
             resultDir.mkdirs()
 
             return File(resultDir, "$solver.cov")
+        }
+
+        @JvmStatic
+        fun getStatisticsFile(
+            benchmark: File,
+            solver: SolverType,
+            benchmarksRootDir: File,
+            statisticsRootDir: File
+        ): File {
+            val benchmarkRelativePath = benchmark.parentFile.relativeTo(benchmarksRootDir).path
+            val resultDir = File(File(statisticsRootDir, benchmarkRelativePath), benchmark.nameWithoutExtension)
+            resultDir.mkdirs()
+
+            return File(resultDir, "$solver.csv")
         }
     }
 }

@@ -4,6 +4,9 @@ import com.sokolov.covboy.sampler.impl.BaselinePredicatePropagatingCoverageSampl
 import com.sokolov.covboy.sampler.impl.GroupingModelsCoverageSampler
 import com.sokolov.covboy.sampler.impl.MultiplePredicatesPropagatingCoverageSampler
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.statistics.MultiplePredicatesPropagatingExtCoverageSampler
+import com.sokolov.covboy.statistics.getStatisticsParam
+import com.sokolov.covboy.statistics.hasStatisticsParam
 import org.ksmt.KContext
 import org.ksmt.expr.KExpr
 import org.ksmt.runner.generated.models.SolverType
@@ -27,14 +30,24 @@ fun <S : KSort> CoverageSamplerType.makeCoverageSampler(
         params
     )
 
-    CoverageSamplerType.PredicatesPropagatingSampler -> MultiplePredicatesPropagatingCoverageSampler(
-        solverType,
-        ctx,
-        assertions,
-        coverageUniverse,
-        coveragePredicates,
-        params
-    )
+    CoverageSamplerType.PredicatesPropagatingSampler ->
+        if (params.hasStatisticsParam() && params.getStatisticsParam())
+            MultiplePredicatesPropagatingExtCoverageSampler(
+                solverType,
+                ctx,
+                assertions,
+                coverageUniverse,
+                coveragePredicates,
+                params
+            )
+        else MultiplePredicatesPropagatingCoverageSampler(
+            solverType,
+            ctx,
+            assertions,
+            coverageUniverse,
+            coveragePredicates,
+            params
+        )
 
     CoverageSamplerType.GroupingModelsSampler -> GroupingModelsCoverageSampler(
         solverType,

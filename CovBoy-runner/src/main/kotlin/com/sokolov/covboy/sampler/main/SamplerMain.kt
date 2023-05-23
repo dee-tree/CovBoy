@@ -9,6 +9,7 @@ import com.sokolov.covboy.sampler.exceptions.UnsuitableFormulaCoverageSamplingEx
 import com.sokolov.covboy.sampler.impl.getModelsGroupSizeParam
 import com.sokolov.covboy.sampler.impl.hasModelsGroupSizeParam
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
+import com.sokolov.covboy.statistics.*
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 import org.ksmt.KContext
@@ -45,7 +46,9 @@ class SamplerMain {
             // params
             if (coverageSamplerType == CoverageSamplerType.GroupingModelsSampler && params.hasModelsGroupSizeParam()) "--mgs=${params.getModelsGroupSizeParam()}" else null,
             if (params.hasSolverTimeoutMillisParam()) "--stm=${params.getSolverTimeoutMillisParam()}" else null,
-            if (params.hasCompleteModelsParam()) "--cm=${params.getCompleteModelsParam()}" else null
+            if (params.hasCompleteModelsParam()) "--cm=${params.getCompleteModelsParam()}" else null,
+            if (params.hasStatisticsParam() && params.getStatisticsParam()) "--statistics" else null,
+            if (params.hasStatisticsFileParam()) "--sf=${params.getStatisticsFileParam()}" else null
         ).toTypedArray()
 
         @JvmStatic
@@ -79,6 +82,11 @@ class SamplerMain {
                 try {
                     val coverage = sampler.use { it.computeCoverage() }
                     coverage.serialize(ctx, outCoverageFile.outputStream())
+                    if (samplerParams.hasStatisticsParam() && samplerParams.getStatisticsParam()) {
+                        File(samplerParams.getStatisticsFileParam()).also { statFile ->
+                            (sampler as CoverageSamplerExt<*>).statistics.writeCsv(statFile.outputStream())
+                        }
+                    }
                 } catch (e: UnknownSolverStatusOnCoverageSamplingException) {
                     PredicatesCoverageSamplingError(
                         PredicatesCoverageSamplingError.Reasons.UnknownDuringSampling,

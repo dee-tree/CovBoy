@@ -1,6 +1,12 @@
 package com.sokolov.covboy.sampler.params
 
+import org.ksmt.utils.uncheckedCast
+
 open class CoverageSamplerParams(private val params: Map<String, Any>) {
+
+    fun <V, R> ifHas(key: String, action: (V) -> R): R? = if (hasParam(key))
+        action(params[key].uncheckedCast())
+    else null
 
     fun hasParam(key: String): Boolean = key in params
     fun hasStringParam(key: String): Boolean = params[key] is String
@@ -22,6 +28,8 @@ open class CoverageSamplerParams(private val params: Map<String, Any>) {
     operator fun plus(other: CoverageSamplerParams): CoverageSamplerParams {
         return CoverageSamplerParams(params + other.params)
     }
+
+    fun copy(): CoverageSamplerParams = CoverageSamplerParams(params.toMap())
 
     object Empty : CoverageSamplerParams(emptyMap())
 }

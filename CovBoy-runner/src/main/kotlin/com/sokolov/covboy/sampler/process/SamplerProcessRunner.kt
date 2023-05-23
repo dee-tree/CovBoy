@@ -10,6 +10,9 @@ import com.sokolov.covboy.sampler.*
 import com.sokolov.covboy.sampler.main.SamplerMain
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
+import com.sokolov.covboy.statistics.getStatisticsFileParam
+import com.sokolov.covboy.statistics.getStatisticsParam
+import com.sokolov.covboy.statistics.hasStatisticsFileParam
 import org.ksmt.KContext
 import org.ksmt.runner.generated.models.SolverType
 import java.io.File
@@ -44,8 +47,18 @@ class SamplerProcessRunner {
                 "-e", "SAMPLER=$coverageSamplerType",
                 if (coverageSamplerParams.hasSolverTimeoutMillisParam()) "-e" else null,
                 if (coverageSamplerParams.hasSolverTimeoutMillisParam()) "SOLVERTIMEOUT=${coverageSamplerParams.getSolverTimeoutMillisParam()}" else null,
+
                 if (coverageSamplerParams.hasCompleteModelsParam()) "-e" else null,
                 if (coverageSamplerParams.hasCompleteModelsParam()) "COMPLETEMODELS=${coverageSamplerParams.getCompleteModelsParam()}" else null,
+
+                if (coverageSamplerParams.hasStatisticsFileParam()) "-e" else null,
+                if (coverageSamplerParams.hasStatisticsFileParam()) "STATISTICS=${
+                    coverageSamplerParams.getStatisticsParam().toString().uppercase()
+                }" else null,
+
+                if (coverageSamplerParams.hasStatisticsFileParam()) "-e" else null,
+                if (coverageSamplerParams.hasStatisticsFileParam()) "STATISTICS_FILE=${coverageSamplerParams.getStatisticsFileParam()}" else null,
+
                 "-v", "/home:/home",
                 "-v", "/ssd:/ssd",
                 "-v", "/usr:/usr",
@@ -58,6 +71,7 @@ class SamplerProcessRunner {
             else DEFAULT_SAMPLER_TIMEOUT
 
             try {
+                // blocks until completed
                 processCommand.asProcessRunner().run(coverageSamplerTimeout)
 
                 if (outCoverageFile.exists()) {
@@ -81,6 +95,7 @@ class SamplerProcessRunner {
             } catch (e: TimeoutException) {
                 logger().warn("[$solverType] Coverage: process killed on timeout $coverageSamplerTimeout on $smtLibFormulaFile")
 
+                // blocks until completed
                 "docker kill $containerName".split(' ').asProcessRunner().run()
 
                 if (outCoverageFile.exists()) {
