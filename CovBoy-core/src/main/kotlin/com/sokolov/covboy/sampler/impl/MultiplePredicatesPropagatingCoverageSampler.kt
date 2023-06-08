@@ -60,8 +60,13 @@ open class MultiplePredicatesPropagatingCoverageSampler<S : KSort> : CoverageSam
         params
     )
 
+    /**
+     * if there are predicates to be covered, but they can't be covered due to exceptional cases (div 0, etc)
+     */
+    private var stopDueToUnsimplifiedLock = false
+
     override fun coverFormula() {
-        while (!allPredicatesCovered) {
+        while (!allPredicatesCovered && !stopDueToUnsimplifiedLock) {
             solver.push()
 
             val uncoveredAssignments = uncoveredPredicates.map { it to (coverageUniverse - it.coveredValues).first() }
@@ -74,16 +79,30 @@ open class MultiplePredicatesPropagatingCoverageSampler<S : KSort> : CoverageSam
 
             when (solver.checkWithTimeout()) {
                 KSolverStatus.SAT -> {
-                    coverModel(solver.model())
+                    val unsimplifiedExprsBefore = unsimplifiedExprs.size
+                    coverModel(solver.model()).also { curCovered ->
+                        if (curCovered.isEmpty() && unsimplifiedExprsBefore != unsimplifiedExprs.size)
+                            stopDueToUnsimplifiedLock = true
+                    }
                 }
 
                 KSolverStatus.UNSAT -> {
-                    uncoveredAssignments.forEach { (lhs, rhs) ->
+                    val unsimplifiedExprsBefore = unsimplifiedExprs.size
+                    uncoveredAssignments.any { (lhs, rhs) ->
                         coverPredicateWithUnsatValue(lhs, rhs)
+                    }.also { anyValueCovered ->
+                        if (!anyValueCovered && unsimplifiedExprsBefore != unsimplifiedExprs.size)
+                            stopDueToUnsimplifiedLock = true
                     }
                 }
 
                 KSolverStatus.UNKNOWN -> throw UnknownSolverStatusOnCoverageSamplingException("Unknown on asserting expr")
+            }
+
+            // add unsimplified value is has to coverage
+            uncoveredAssignments.forEach { ua ->
+                if (ua.first in unsimplifiedExprs)
+                    coverPredicateWithUnsimplifiedValue(ua.first, ua.second)
             }
 
             solver.pop()

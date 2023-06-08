@@ -5,128 +5,88 @@ import com.sokolov.covboy.isLinux
 import com.sokolov.covboy.isWindows
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeoutException
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 class ProcessRunnerTest {
 
     @Test
+    @OptIn(ExperimentalTime::class)
     fun testProcessRunTimeout() {
-        val command = delayCommand(10)
-        var timeoutExceededCallbackCalled = false
+        val delayTime = 10.seconds
+        val timeout = 1.seconds
+        val command = delayCommand(delayTime.inWholeSeconds.toInt())
         val dispatcher = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
 
         runBlocking {
-            var processPushed = false
-
-            command.asProcessRunner().run(
-                timeout = 1.seconds,
-                // pass coroutineContext to avoid new scope creation
-                ctx = coroutineContext + dispatcher,
-
-                onComplete = {
-                    assertTrue { false } // assume unachievable state
-                },
-
-                onTimeoutExceeded = {
-                    assertTrue { processPushed }
-                    assertFalse { it.isAlive }
-                    timeoutExceededCallbackCalled = true
-                }
-            )
-
-            // executes before process completion
-            assertFalse { processPushed }
-            processPushed = true
+            measureTime {
+                assertThrows<TimeoutException> { command.asProcessRunner().run(timeout = timeout) }
+            }.also {
+                assertTrue { timeout <= it && it < delayTime }
+            }
         }
 
-        // executes after process killed
-        assertTrue { timeoutExceededCallbackCalled }
         dispatcher.close()
     }
 
     @Test
+    @OptIn(ExperimentalTime::class)
     fun testProcessRunComplete() {
-        val command = delayCommand(1)
-        var onCompleteCallbackCalled = false
+        val delayTime = 1.seconds
+        val timeout = 5.seconds
+        val command = delayCommand(delayTime.inWholeSeconds.toInt())
         val dispatcher = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
 
         runBlocking {
-            var processPushed = false
-
-            command.asProcessRunner().run(
-                timeout = 5.seconds,
-                ctx = coroutineContext + dispatcher,
-
-                onComplete = {
-                    assertTrue { processPushed }
-                    assertFalse { it.isAlive }
-                    onCompleteCallbackCalled = true
-                },
-
-                onTimeoutExceeded = {
-                    assertTrue { false } // assume unachievable state
-                }
-            )
-
-            // executes before process completion
-            assertFalse { processPushed }
-            processPushed = true
+            measureTime {
+                assertDoesNotThrow { command.asProcessRunner().run(timeout = timeout) }
+            }.also {
+                assertTrue { delayTime <= it && it < timeout }
+            }
         }
 
-        // executes after process completion
-        assertTrue { onCompleteCallbackCalled }
         dispatcher.close()
     }
 
     @ParameterizedTest
     @ValueSource(ints = [1, 2, 4, 8, 12])
+    @OptIn(ExperimentalTime::class)
     fun testParallelProcessRunTimeout(processesCount: Int) {
         assumeTrue(processesCount <= Runtime.getRuntime().availableProcessors())
 
-        val command = delayCommand(10)
-        var timeoutExceededCallbackCalledTimes = 0
+        val delayTime = 10.seconds
+        val timeout = 5.seconds
+        val command = delayCommand(delayTime.inWholeSeconds.toInt())
         val dispatcher = Executors
-            .newFixedThreadPool(Runtime.getRuntime().availableProcessors())
+            .newFixedThreadPool(processesCount)
             .asCoroutineDispatcher()
 
         runBlocking {
-            var pushedProcessesCount = 0
-
-            val processJobs = (1..processesCount).mapIndexed { iter, i ->
-                command.asProcessRunner().run(
-                    timeout = 1.seconds,
-                    ctx = coroutineContext + dispatcher,
-
-                    onComplete = {
-                        assertFalse { true } // assume unachievable state
-                    },
-
-                    onTimeoutExceeded = {
-                        assertEquals(processesCount, pushedProcessesCount)
-                        assertFalse { it.isAlive }
-                        timeoutExceededCallbackCalledTimes++
+            measureTime {
+                (1..processesCount).mapIndexed { iter, i ->
+                    withContext(dispatcher) {
+                        measureTime {
+                            assertThrows<TimeoutException> { command.asProcessRunner().run(timeout = timeout) }
+                        }.also { assertTrue { timeout <= it && it < delayTime } }
                     }
-                ).also {
-                    // executes before process completion, but after its start
-                    assertTrue { pushedProcessesCount < processesCount }
-                    pushedProcessesCount++
                 }
 
+            }.also {
+                assertTrue { it < timeout * processesCount }
             }
-
-            // executes before process completion, but after all them run
-            assertEquals(processesCount, pushedProcessesCount)
-            assertEquals(0, timeoutExceededCallbackCalledTimes)
         }
-        assertEquals(processesCount, timeoutExceededCallbackCalledTimes)
+
         dispatcher.close()
     }
 

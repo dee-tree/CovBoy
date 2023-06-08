@@ -65,7 +65,11 @@ abstract class CoverageSampler<T : KSort> constructor(
     protected val KExpr<T>.coveredSatValues: Set<KExpr<T>>
         get() = currentCoverageSat.getValue(this)
     protected val KExpr<T>.coveredValues: Set<KExpr<T>>
-        get() = currentCoverageSat.getValue(this) + currentCoverageUnsat.getValue(this)
+        get() = currentCoverageSat.getValue(this) + currentCoverageUnsat.getValue(this) + currentCoverageUnknowns.getValue(
+            this
+        )
+
+    protected val unsimplifiedExprs = hashSetOf<KExpr<T>>()
 
     fun isUnknownPredicateValue(
         predicate: KExpr<T>,
@@ -126,9 +130,13 @@ abstract class CoverageSampler<T : KSort> constructor(
                  * this term has sat-value
                  */
 
-                if (value !in predicate.coveredValues) {
-                    add(predicate to value)
-                    coverPredicateWithSatValue(predicate, value)
+                if (value in coverageUniverse) {
+                    if (value !in predicate.coveredValues) {
+                        add(predicate to value)
+                        coverPredicateWithSatValue(predicate, value)
+                    }
+                } else {
+                    unsimplifiedExprs += predicate
                 }
             }
         }
@@ -156,13 +164,29 @@ abstract class CoverageSampler<T : KSort> constructor(
                 uncoveredPredicatesCache -= lhs
         }
 
+    protected fun coverPredicateWithUnsimplifiedValue(lhs: KExpr<T>, propagatedRhs: KExpr<T>) {
+        currentCoverageUnknowns.getValue(lhs) += propagatedRhs
 
-    protected fun coverPredicateWithUnsatValue(lhs: KExpr<T>, rhs: KExpr<T>) {
+        if (lhs.coveredValues == coverageUniverse)
+            uncoveredPredicatesCache -= lhs
+    }
+
+
+    /**
+     * true, if covered by this call, else false
+     */
+    protected fun coverPredicateWithUnsatValue(lhs: KExpr<T>, rhs: KExpr<T>): Boolean {
+        if (currentCoverageUnsat[lhs]?.contains(rhs) == true) {
+            return false
+        }
+
         currentCoverageUnsat.getValue(lhs) += rhs
         currentCoverageUnknowns.getValue(lhs) -= rhs
 
         if (lhs.coveredValues == coverageUniverse)
             uncoveredPredicatesCache -= lhs
+
+        return true
     }
 
     protected fun markAsUnknown(predicate: KExpr<T>, value: KExpr<T>) {

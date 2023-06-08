@@ -52,6 +52,7 @@ open class SamplerParamArgs(parser: ArgParser) {
         "--sf", "--statfile",
         help = "Path to output of statistics if enabled (.csv)"
     ) { File(this) }
+        .default { File("") }
 
     open val params: CoverageSamplerParams
         get() = CoverageSamplerParams.build {

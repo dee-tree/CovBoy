@@ -22,8 +22,26 @@ data class PredicatesCoverage<S : KSort>(
     )
 
     fun equalsCoverage(other: PredicatesCoverage<S>): Boolean {
-        if (coverageSat != other.coverageSat) return false
-        return coverageUnsat == other.coverageUnsat
+        if (coverageSat != other.coverageSat) {
+            if (coverageSat.any { (predicate, values) ->
+                    values.any { it in (other.coverageUnsat[predicate] ?: emptySet()) }
+                }) return false
+
+            if (other.coverageSat.any { (predicate, values) ->
+                    values.any { it in (coverageUnsat[predicate] ?: emptySet()) }
+                }) return false
+        }
+        if (coverageUnsat != other.coverageUnsat) {
+            if (coverageUnsat.any { (predicate, values) ->
+                    values.any { it in (other.coverageSat[predicate] ?: emptySet()) }
+                }) return false
+
+            if (other.coverageUnsat.any { (predicate, values) ->
+                    values.any { it in (coverageSat[predicate] ?: emptySet()) }
+                }) return false
+        }
+
+        return true
     }
 
     fun serialize(ctx: KContext, out: OutputStream) = with(PredicatesCoverageSerializer(ctx)) {

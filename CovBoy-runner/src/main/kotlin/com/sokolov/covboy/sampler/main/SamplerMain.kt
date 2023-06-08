@@ -84,6 +84,11 @@ class SamplerMain {
                     coverage.serialize(ctx, outCoverageFile.outputStream())
                     if (samplerParams.hasStatisticsParam() && samplerParams.getStatisticsParam()) {
                         File(samplerParams.getStatisticsFileParam()).also { statFile ->
+                            if (statFile.exists())
+                                statFile.delete()
+                            else
+                                statFile.parentFile.mkdirs()
+
                             (sampler as CoverageSamplerExt<*>).statistics.writeCsv(statFile.outputStream())
                         }
                     }
