@@ -47,6 +47,8 @@ class CoverageInfoPrinter {
                     }
                 }
 
+            val unknownFiles = hashSetOf<File>()
+//            val timeouts = hashMapOf<Map<SolverType, File>, Int>()
 
             coverageCases.forEach { coverageCase ->
                 coverageCase.forEach { (solverType, coverageFile) ->
@@ -60,6 +62,15 @@ class CoverageInfoPrinter {
                             errorsCountBySolverType[solverType] = errorsCountBySolverType.getValue(solverType) + 1
                             val coverageError = serializer.deserializeError(inputStream)
 
+                            if (coverageError.reason == PredicatesCoverageSamplingError.Reasons.UnknownDuringSampling) {
+                                unknownFiles += coverageFile
+                            }
+
+                            if (coverageError.reason != PredicatesCoverageSamplingError.Reasons.UnknownDuringSampling && coverageError.reason != PredicatesCoverageSamplingError.Reasons.InitiallyUnsuitableFormulaSatisfiability
+                                && coverageError.reason == PredicatesCoverageSamplingError.Reasons.TimeoutExceeded) {
+//                                timeouts[coverageCase] = timeouts.getOrDefault(coverageCase, 0) + 1
+                                1 + 3;
+                            }
                             errorsCountByReasons[coverageError.reason] =
                                 errorsCountByReasons.getValue(coverageError.reason) + 1
                             errorsCountBySolverTypeAndReason.getValue(solverType)[coverageError.reason] =

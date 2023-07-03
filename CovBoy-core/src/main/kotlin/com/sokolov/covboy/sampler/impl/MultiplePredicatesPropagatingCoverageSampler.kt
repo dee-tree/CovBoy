@@ -68,7 +68,7 @@ open class MultiplePredicatesPropagatingCoverageSampler<S : KSort> : CoverageSam
     override fun coverFormula() {
         while (!allPredicatesCovered && !stopDueToUnsimplifiedLock) {
             solver.push()
-
+//            println("Uncovered: ${uncoveredPredicates.sumOf { (coverageUniverse - it.coveredValues).size }}")
             val uncoveredAssignments = uncoveredPredicates.map { it to (coverageUniverse - it.coveredValues).first() }
 
             val uncoveredAssignmentsDisjunction = ctx.mkOr(

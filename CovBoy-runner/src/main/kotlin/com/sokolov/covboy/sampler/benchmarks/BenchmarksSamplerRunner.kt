@@ -40,7 +40,10 @@ class BenchmarksSamplerRunner {
             coverageSamplerParams: CoverageSamplerParams = CoverageSamplerParams.Empty,
             rewriteResults: Boolean = false
         ) {
-            val benchmarks = BenchmarkDataPreprocessor.parseBenchmarks(benchmarksDir).toList()
+            val benchmarks = File("/ssd/sokolov/IdeaProjects/CovBoy/CovBoy-runner/data/benchmarks/benchs-1s.csv")
+                .useLines { lines ->
+                    lines.drop(1).map { File(it) }.toList()
+                } //BenchmarkDataPreprocessor.parseBenchmarks(benchmarksDir).toList()
 
             // TODO: dispatcher: by solvers count or by processors count?
             val dispatcher = Executors
