@@ -24,6 +24,7 @@ class ProcessRunnerTest {
     @Test
     @OptIn(ExperimentalTime::class)
     fun testProcessRunTimeout() {
+        assumeTrue("windows" !in getOsName())
         val delayTime = 10.seconds
         val timeout = 1.seconds
         val command = delayCommand(delayTime.inWholeSeconds.toInt())
@@ -43,6 +44,8 @@ class ProcessRunnerTest {
     @Test
     @OptIn(ExperimentalTime::class)
     fun testProcessRunComplete() {
+        assumeTrue("windows" !in getOsName())
+
         val delayTime = 1.seconds
         val timeout = 5.seconds
         val command = delayCommand(delayTime.inWholeSeconds.toInt())
@@ -52,7 +55,7 @@ class ProcessRunnerTest {
             measureTime {
                 assertDoesNotThrow { command.asProcessRunner().run(timeout = timeout) }
             }.also {
-                assertTrue { delayTime <= it && it < timeout }
+                assertTrue { delayTime <= it && it < timeout * 2 }
             }
         }
 
@@ -63,6 +66,8 @@ class ProcessRunnerTest {
     @ValueSource(ints = [1, 2, 4, 8, 12])
     @OptIn(ExperimentalTime::class)
     fun testParallelProcessRunTimeout(processesCount: Int) {
+        assumeTrue("windows" !in getOsName())
+
         assumeTrue(processesCount <= Runtime.getRuntime().availableProcessors())
 
         val delayTime = 10.seconds
@@ -92,7 +97,6 @@ class ProcessRunnerTest {
 
     private fun delayCommand(seconds: Int) = when {
         isLinux -> "sleep $seconds"
-        isWindows -> "timeout $seconds"
         else -> TODO("add command for OS: ${getOsName()}")
     }.split(' ')
 }

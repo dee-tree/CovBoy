@@ -31,6 +31,7 @@ class SamplerRunnerTest {
         val input = File.createTempFile("smtlib2-formula", null, tempDir)
         input.writeText(
             """
+            (set-info :status sat)
             (declare-const a Bool)
             (declare-const b Bool)
             
@@ -49,7 +50,9 @@ class SamplerRunnerTest {
 
         val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
         val coverage = assertDoesNotThrow {
-            PredicatesCoverage.deserialize<KBoolSort>(ctx, outputCoverageFile.inputStream())
+            outputCoverageFile.inputStream().use { stream ->
+                PredicatesCoverage.deserialize<KBoolSort>(ctx, stream)
+            }
         }
 
         assertEquals(solverType, coverage.solverType)
@@ -75,6 +78,7 @@ class SamplerRunnerTest {
         val input = File.createTempFile("smtlib2-formula", null, tempDir)
         input.writeText(
             """
+            (set-info :status sat)
             (declare-const a Bool)
             (declare-const b Bool)
             
@@ -100,7 +104,9 @@ class SamplerRunnerTest {
 
         val ctx = KContext(simplificationMode = KContext.SimplificationMode.NO_SIMPLIFY)
         val coverage = assertDoesNotThrow {
-            PredicatesCoverage.deserialize<KBoolSort>(ctx, outputCoverageFile.inputStream())
+            outputCoverageFile.inputStream().use { stream ->
+                PredicatesCoverage.deserialize<KBoolSort>(ctx, stream)
+            }
         }
 
         assertEquals(solverType, coverage.solverType)

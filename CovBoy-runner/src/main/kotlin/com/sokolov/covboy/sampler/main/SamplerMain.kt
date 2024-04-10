@@ -80,7 +80,9 @@ class SamplerMain {
 
                 try {
                     val coverage = sampler.use { it.computeCoverage() }
-                    coverage.serialize(ctx, outCoverageFile.outputStream())
+                    outCoverageFile.outputStream().use { stream ->
+                        coverage.serialize(ctx, stream)
+                    }
                     if (samplerParams.hasStatisticsFileParam() && samplerParams.getStatisticsFileParamAsFile().isFile) {
                         samplerParams.getStatisticsFileParamAsFile().also { statFile ->
                             if (statFile.exists()) statFile.delete()
@@ -90,32 +92,29 @@ class SamplerMain {
                         }
                     }
                 } catch (e: UnknownSolverStatusOnCoverageSamplingException) {
-                    PredicatesCoverageSamplingError(
-                        PredicatesCoverageSamplingError.Reasons.UnknownDuringSampling,
-                        e.stackTraceToString(),
-                        solverType
-                    ).serialize(
-                        ctx,
-                        outCoverageFile.outputStream()
-                    )
+                    outCoverageFile.outputStream().use { stream ->
+                        PredicatesCoverageSamplingError(
+                            PredicatesCoverageSamplingError.Reasons.UnknownDuringSampling,
+                            e.stackTraceToString(),
+                            solverType
+                        ).serialize(ctx, stream)
+                    }
                 } catch (e: UnsuitableFormulaCoverageSamplingException) {
-                    PredicatesCoverageSamplingError(
-                        PredicatesCoverageSamplingError.Reasons.InitiallyUnsuitableFormulaSatisfiability,
-                        e.message.toString(),
-                        solverType
-                    ).serialize(
-                        ctx,
-                        outCoverageFile.outputStream()
-                    )
+                    outCoverageFile.outputStream().use { stream ->
+                        PredicatesCoverageSamplingError(
+                            PredicatesCoverageSamplingError.Reasons.InitiallyUnsuitableFormulaSatisfiability,
+                            e.message.toString(),
+                            solverType
+                        ).serialize(ctx, stream)
+                    }
                 } catch (e: Exception) {
-                    PredicatesCoverageSamplingError(
-                        PredicatesCoverageSamplingError.Reasons.Other,
-                        e.stackTraceToString(),
-                        solverType
-                    ).serialize(
-                        ctx,
-                        outCoverageFile.outputStream()
-                    )
+                    outCoverageFile.outputStream().use { stream ->
+                        PredicatesCoverageSamplingError(
+                            PredicatesCoverageSamplingError.Reasons.Other,
+                            e.stackTraceToString(),
+                            solverType
+                        ).serialize(ctx, stream)
+                    }
                 }
             }
 
