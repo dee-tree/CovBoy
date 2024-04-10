@@ -3,6 +3,7 @@ package com.sokolov.covboy.statistics
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
 import org.ksmt.sort.KSort
+import java.io.File
 
 interface CoverageSamplerExt<S : KSort> {
     val coveredSatValuesCount: Int
@@ -15,16 +16,11 @@ interface CoverageSamplerExt<S : KSort> {
 }
 
 
-fun CoverageSamplerParams.hasStatisticsParam(): Boolean = hasBoolParam(CoverageSamplerExt.ParamKeys.Statistics)
 fun CoverageSamplerParams.hasStatisticsFileParam(): Boolean =
     hasStringParam(CoverageSamplerExt.ParamKeys.StatisticsFile)
 
-fun CoverageSamplerParams.getStatisticsParam(): Boolean = getBool(CoverageSamplerExt.ParamKeys.Statistics)
 fun CoverageSamplerParams.getStatisticsFileParam(): String = getString(CoverageSamplerExt.ParamKeys.StatisticsFile)
-
-fun CoverageSamplerParamsBuilder.putStatistics(value: Boolean) {
-    putParam(CoverageSamplerExt.ParamKeys.Statistics, value)
-}
+fun CoverageSamplerParams.getStatisticsFileParamAsFile(): File = File(getStatisticsFileParam())
 
 fun CoverageSamplerParamsBuilder.putStatisticsFile(value: String) {
     putParam(CoverageSamplerExt.ParamKeys.StatisticsFile, value)

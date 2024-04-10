@@ -11,7 +11,6 @@ import com.sokolov.covboy.sampler.main.SamplerMain
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.params.CoverageSamplerParamsBuilder
 import com.sokolov.covboy.statistics.getStatisticsFileParam
-import com.sokolov.covboy.statistics.getStatisticsParam
 import com.sokolov.covboy.statistics.hasStatisticsFileParam
 import org.ksmt.KContext
 import org.ksmt.runner.generated.models.SolverType
@@ -35,14 +34,14 @@ class SamplerProcessRunner {
         ) {
             val containerName = "cov${Thread.currentThread().id}"
             val processCommand = listOfNotNull(
-                "docker",
-                "run",
-                "--rm",
+                "docker", "run", "--rm",
                 "--name=$containerName",
                 "--memory=${memoryLimit}M",
                 "--memory-swap=${memoryLimit}M",
-                "-e", "IN_BENCH=$smtLibFormulaFile",
-                "-e", "OUT_BENCH=$outCoverageFile",
+                "-e", "BENCH=${smtLibFormulaFile.name}",
+                "-e", "COVERAGE=${outCoverageFile.name}",
+                "-v", "${smtLibFormulaFile.parentFile.absolutePath}:/project/benchmarks",
+                "-v", "${outCoverageFile.parentFile.absolutePath}:/project/coverage",
                 "-e", "SOLVER=$solverType",
                 "-e", "SAMPLER=$coverageSamplerType",
                 if (coverageSamplerParams.hasSolverTimeoutMillisParam()) "-e" else null,
@@ -52,18 +51,8 @@ class SamplerProcessRunner {
                 if (coverageSamplerParams.hasCompleteModelsParam()) "COMPLETEMODELS=${coverageSamplerParams.getCompleteModelsParam()}" else null,
 
                 if (coverageSamplerParams.hasStatisticsFileParam()) "-e" else null,
-                if (coverageSamplerParams.hasStatisticsFileParam()) "STATISTICS=${
-                    coverageSamplerParams.getStatisticsParam().toString().uppercase()
-                }" else null,
-
-                if (coverageSamplerParams.hasStatisticsFileParam()) "-e" else null,
                 if (coverageSamplerParams.hasStatisticsFileParam()) "STATISTICS_FILE=${coverageSamplerParams.getStatisticsFileParam()}" else null,
-
-                "-v", "/home:/home",
-                "-v", "/ssd:/ssd",
-                "-v", "/usr:/usr",
-                "sampler_main",
-                "/bin/bash"
+                "sampler_main"
             )
 
             val coverageSamplerTimeout = if (coverageSamplerParams.hasSamplerTimeoutMillisParam())

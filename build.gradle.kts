@@ -1,7 +1,7 @@
 plugins {
-    kotlin("jvm") version "1.7.20" apply false
-    kotlin("plugin.serialization") version "1.7.20" apply false
-    kotlin("kapt") version "1.7.20" apply false
+    kotlin("jvm") version "1.9.20" apply false
+    kotlin("plugin.serialization") version "1.9.20" apply false
+    kotlin("kapt") version "1.9.20" apply false
     id("me.champeau.jmh") version "0.7.0" apply false
 }
 

@@ -47,7 +47,6 @@ class SamplerMain {
             if (coverageSamplerType == CoverageSamplerType.GroupingModelsSampler && params.hasModelsGroupSizeParam()) "--mgs=${params.getModelsGroupSizeParam()}" else null,
             if (params.hasSolverTimeoutMillisParam()) "--stm=${params.getSolverTimeoutMillisParam()}" else null,
             if (params.hasCompleteModelsParam()) "--cm=${params.getCompleteModelsParam()}" else null,
-            if (params.hasStatisticsParam() && params.getStatisticsParam()) "--statistics" else null,
             if (params.hasStatisticsFileParam()) "--sf=${params.getStatisticsFileParam()}" else null
         ).toTypedArray()
 
@@ -82,12 +81,10 @@ class SamplerMain {
                 try {
                     val coverage = sampler.use { it.computeCoverage() }
                     coverage.serialize(ctx, outCoverageFile.outputStream())
-                    if (samplerParams.hasStatisticsParam() && samplerParams.getStatisticsParam()) {
-                        File(samplerParams.getStatisticsFileParam()).also { statFile ->
-                            if (statFile.exists())
-                                statFile.delete()
-                            else
-                                statFile.parentFile.mkdirs()
+                    if (samplerParams.hasStatisticsFileParam() && samplerParams.getStatisticsFileParamAsFile().isFile) {
+                        samplerParams.getStatisticsFileParamAsFile().also { statFile ->
+                            if (statFile.exists()) statFile.delete()
+                            else statFile.parentFile.mkdirs()
 
                             (sampler as CoverageSamplerExt<*>).statistics.writeCsv(statFile.outputStream())
                         }

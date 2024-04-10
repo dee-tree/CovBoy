@@ -74,7 +74,9 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         // TODO: ensure that inputStream is markable
         input.mark(0)
 
-        val buffer = createAbstractBuffer(input.readNBytes(Int.SIZE_BYTES * 2))
+        val byteBuffer = ByteArray(Int.SIZE_BYTES * 2)
+        input.read(byteBuffer)
+        val buffer = createAbstractBuffer(byteBuffer)
         val version = buffer.readInt()
 
         return when (version) {
@@ -94,7 +96,7 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
         val sCtx = AstSerializationCtx()
         sCtx.initCtx(ctx)
 
-        val buffer = createAbstractBuffer(input.readAllBytes())
+        val buffer = createAbstractBuffer(input.readBytes())
         val deserializer = AstDeserializer(sCtx, buffer)
 
         // check serialized coverage version
@@ -205,7 +207,7 @@ class PredicatesCoverageSerializer(private val ctx: KContext) {
     }
 
     fun deserializeError(input: InputStream): PredicatesCoverageSamplingError {
-        val buffer = createAbstractBuffer(input.readAllBytes())
+        val buffer = createAbstractBuffer(input.readBytes())
 
         // check serialized coverage version
         val version = buffer.readInt()

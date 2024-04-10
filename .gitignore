@@ -45,3 +45,4 @@ bin/
 /coverage-sampler/input/
 /CovBoy-runner/data/benchmarks/
 /CovBoy-benchmarks/data/
+/CovBoy-runner/logs/

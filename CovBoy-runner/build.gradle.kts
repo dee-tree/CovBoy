@@ -1,7 +1,9 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "com.sokolov"
@@ -41,8 +43,19 @@ tasks.test {
     useJUnitPlatform()
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.withType<ShadowJar> {
+    manifest {
+        attributes["Main-Class"] = "com.sokolov.covboy.sampler.main.SamplerMain"
+    }
 }
 
 fun Project.stringProperty(name: String): String? =

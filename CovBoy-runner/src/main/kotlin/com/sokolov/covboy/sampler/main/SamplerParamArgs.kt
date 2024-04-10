@@ -7,7 +7,6 @@ import com.sokolov.covboy.sampler.impl.putModelsGroupSizeParam
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.putCompleteModels
 import com.sokolov.covboy.sampler.putSolverTimeoutMillis
-import com.sokolov.covboy.statistics.putStatistics
 import com.sokolov.covboy.statistics.putStatisticsFile
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
@@ -18,9 +17,10 @@ open class SamplerParamArgs(parser: ArgParser) {
     val coverageSamplerType by parser.mapping(
         "--${CoverageSamplerType.PredicatesPropagatingSampler}" to CoverageSamplerType.PredicatesPropagatingSampler,
         "--baseline" to CoverageSamplerType.BaselinePredicatePropagatingSampler,
+        "--${CoverageSamplerType.BaselinePredicatePropagatingSampler}" to CoverageSamplerType.BaselinePredicatePropagatingSampler,
         "--${CoverageSamplerType.GroupingModelsSampler}" to CoverageSamplerType.GroupingModelsSampler,
         help = "Name of the coverage sampler type. Possible variants: ${
-            CoverageSamplerType.values().joinToString(" / ")
+            CoverageSamplerType.entries.joinToString(" / ")
         }"
     ).default { CoverageSamplerType.PredicatesPropagatingSampler }
 
@@ -43,10 +43,8 @@ open class SamplerParamArgs(parser: ArgParser) {
         .default { GroupingModelsCoverageSampler.DEFAULT_MODELS_GROUP_SIZE }
         .addValidator { if (value < 1) throw IllegalArgumentException("Models groupd size must be positive value!") }
 
-    val statistics: Boolean by parser.flagging(
-        "--statistics", "--stat",
-        help = "Collect statistics on coverage sampler"
-    ).default { false }
+    val collectStatistics: Boolean
+        get() = statisticsFile.isFile
 
     val statisticsFile: File by parser.storing(
         "--sf", "--statfile",
@@ -63,8 +61,7 @@ open class SamplerParamArgs(parser: ArgParser) {
                 putModelsGroupSizeParam(modelsGroupSize)
             }
 
-            if (statistics) {
-                putStatistics(true)
+            if (collectStatistics) {
                 putStatisticsFile(statisticsFile.absolutePath)
             }
         }

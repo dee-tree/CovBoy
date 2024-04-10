@@ -1,6 +1,7 @@
 package com.sokolov.covboy.sampler.benchmarks
 
 import com.sokolov.covboy.logger
+import com.sokolov.covboy.sampler.BenchmarkDataPreprocessor
 import com.sokolov.covboy.sampler.CoverageSamplerType
 import com.sokolov.covboy.sampler.params.CoverageSamplerParams
 import com.sokolov.covboy.sampler.process.SamplerProcessRunner
@@ -90,12 +91,11 @@ class BenchmarksSamplerRunner {
 
                 var newParams = coverageSamplerParams.copy()
 
-                if (coverageSamplerParams.hasStatisticsParam() && coverageSamplerParams.getStatisticsParam()) {
+                if (coverageSamplerParams.hasStatisticsFileParam()) {
                     val statisticsDir = File(coverageSamplerParams.getStatisticsFileParam())
                     val statisticsFile = getStatisticsFile(benchFile, solver, benchmarksDir, statisticsDir)
 
                     newParams += CoverageSamplerParams.build {
-                        putStatistics(true)
                         putStatisticsFile(statisticsFile.absolutePath)
                     }
                 }
